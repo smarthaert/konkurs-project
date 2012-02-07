@@ -1,0 +1,148 @@
+unit UnBuildTank;
+
+interface
+uses
+  dglOpenGL, UnBuildObject,UnVarConstOpenGL, UnBuildTexture, SysUtils;
+
+var
+  BMP_KORPUS: integer;
+  BMP_BASHNA: integer;
+  BMP_STVOL: integer;
+  BMP_BAZA1: integer;
+  BMP_BAZA2: integer;
+  BMP_OTBOY_1: integer;
+  BMP_OTBOY_2: integer;
+  BMP_PERED_1: integer;
+  BMP_PERED_2: integer;
+  BMP_KATOK_L1: integer;
+  BMP_KATOK_L2: integer;
+  BMP_KATOK_R1: integer;
+  BMP_KATOK_R2: integer;
+  BMP_GABAR_ALL: integer;
+  BMP_GABAR_ARIER: integer;
+  BMP_FARA: integer;
+  BMP_FARA_N: integer;
+
+  TANK_KORPUS: integer;
+  TANK_BASHNA: integer;
+  TANK_STVOL: integer;
+  TANK_BAZA1: integer;
+  TANK_BAZA2: integer;
+  TANK_GABAR_ALL: integer;
+  TANK_GABAR_ARIER: integer;
+  TANK_FARA: integer;
+  TANK_KATOK_R1: integer;
+  TANK_KATOK_R2: integer;
+  TANK_KATOK_L1: integer;
+  TANK_KATOK_L2: integer;
+  TANK_KORPUS_TEN: integer;
+  TANK_BASHNA_TEN: integer;
+  TANK_STVOL_TEN: integer;
+
+  TRASSA_PTUR:array[1..20] of integer;
+  FIRE_PTUR: array[1..3] of integer;
+  MISSILE_PTUR: integer;
+
+
+procedure Build_Tank;
+procedure Build_BMP;
+procedure Build_PTUR;
+
+implementation
+
+procedure Build_PTUR;
+const
+  mat:  Array [0..3] of GLFloat = (1, 1, 1, 1);
+var a: word;
+x,y,z: real;
+begin
+  MontObject('res/2c6/ZUR.shp',MISSILE_PTUR);
+  for a:=1 to 3 do begin
+    FIRE_PTUR[a]:=glGenLists(1);
+    numTexture:=CreateTexture('Fire\Fire_'+inttostr(a)+'.bmp',8, TEXTURE_FILTR_ON);//текстура накладывается
+    glNewList (FIRE_PTUR[a], GL_COMPILE);
+      glBindTexture(GL_TEXTURE_2D, numTexture);
+      x:=0.045;
+      y:=0.045;
+      z:=0;
+      glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION,@LIGHT_EMMISS_ON);
+      glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+      glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,@mat);
+      glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+      glBegin(GL_QUADS);
+        glTexCoord2f(0.0, 0.0);
+        glNormal3f(0,0,1);
+        glVertex3f(-x, -y, z);
+        glTexCoord2f( 0.0, 1.0);
+        glVertex3f(-x, y, z);
+        glTexCoord2f(1.0, 1.0);
+        glVertex3f(x, y, z);
+        glTexCoord2f(1.0, 0.0);
+        glVertex3f(x, -y, z);
+      glEnd;
+      glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION,@LIGHT_EMMISS_OFF);
+    glEndList;
+  end;
+  for a:=1 to 20 do begin
+    TRASSA_PTUR[a]:=glGenLists(1);
+    numTexture:=CreateTexture('Sprite\Vsp3\Vsp'+inttostr(a)+'.bmp',3, TEXTURE_FILTR_ON);//текстура накладывается
+    glNewList (TRASSA_PTUR[a], GL_COMPILE);
+      glBindTexture(GL_TEXTURE_2D, numTexture);
+      z:=0.04;
+      glBegin(GL_QUADS);
+        glTexCoord2f(0.0, 0.0);
+        glNormal3f(0,0,1);
+        glVertex3f(-z, -z, 0);
+        glTexCoord2f( 0.0, 1.0);
+        glVertex3f(-z, z, 0);
+        glTexCoord2f(1.0, 1.0);
+        glVertex3f(z, z, 0);
+        glTexCoord2f(1.0, 0.0);
+        glVertex3f(z, -z, 0);
+      glEnd;
+    glEndList;
+  end;
+end;
+
+procedure Build_BMP;
+begin
+  MontObject('res/BMP_2_V2/bm2_basa.shp',BMP_KORPUS);
+  MontObject('res/BMP_2_V2/bm2_stv.shp',BMP_STVOL);
+  MontObject('res/BMP_2_V2/bm2_bash.shp',BMP_BASHNA);
+  MontObject('res/BMP_2_V2/bm2_dv1.shp',BMP_BAZA1);
+  MontObject('res/BMP_2_V2/bm2_dv2.shp',BMP_BAZA2);
+  MontObject('res/BMP_2_V2/kol1L.shp',BMP_KATOK_L1);
+  MontObject('res/BMP_2_V2/kol2L.shp',BMP_KATOK_L2);
+  MontObject('res/BMP_2_V2/kol1R.shp',BMP_KATOK_R1);
+  MontObject('res/BMP_2_V2/kol2R.shp',BMP_KATOK_R2);
+  MontObject('res/BMP_2_V2/bm2Gab1.shp',BMP_GABAR_ALL);
+  MontObject('res/BMP_2_V2/bm2Gab2.shp',BMP_GABAR_ARIER);
+  MontObject('res/BMP_2_V2/bm2Far.shp',BMP_FARA);
+  MontObject('res/BMP_2_V2/bm2Farn.shp',BMP_FARA_N);
+  MontObject('res/BMP_2_V2/otboy.shp',BMP_OTBOY_1);
+  MontObject('res/BMP_2_V2/otboy2.shp',BMP_OTBOY_2);
+  MontObject('res/BMP_2_V2/pered.shp',BMP_PERED_1);
+  MontObject('res/BMP_2_V2/pered2.shp',BMP_PERED_2);
+end;
+
+procedure Build_Tank;
+begin
+  // Танк Т-72
+  MontObject('res/T-72v2/T_72basa.shp',TANK_KORPUS);
+  MontObject('res/T-72v2/T_72Bash.shp',TANK_BASHNA);
+  MontObject('res/T-72v2/T_72Dv1.shp',TANK_BAZA1);
+  MontObject('res/T-72v2/T_72Dv2.shp',TANK_BAZA2);
+  MontObject('res/T-72v2/T_72Stv.shp',TANK_STVOL);
+  MontObject('res/T-72v2/T_72Gab1.shp',TANK_GABAR_ALL);
+  MontObject('res/T-72v2/T_72Gab2.shp',TANK_GABAR_ARIER);
+  MontObject('res/T-72v2/T_72Far.shp',TANK_FARA);
+  MontObject('res/T-72v2/Katok_R1.shp',TANK_KATOK_R1);
+  MontObject('res/T-72v2/Katok_R2.shp',TANK_KATOK_R2);
+  MontObject('res/T-72v2/Katok_L1.shp',TANK_KATOK_L1);
+  MontObject('res/T-72v2/Katok_L2.shp',TANK_KATOK_L2);
+  MontObject('res/T-72v2/T_72basat.shp',TANK_KORPUS_TEN);
+  MontObject('res/T-72v2/T_72Basht.shp',TANK_BASHNA_TEN);
+  MontObject('res/T-72v2/T_72Stvt.shp',TANK_STVOL_TEN);
+end;
+
+end.

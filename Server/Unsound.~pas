@@ -1,0 +1,104 @@
+unit Unsound;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  DXSounds, UnOther;
+
+const
+SOUND_COUNT = 4;
+PLAY_TYPE : array [0..SOUND_COUNT-1] of byte = (0, 0, 0, 0); //1-циклический
+SOUND_NAME : array [0..SOUND_COUNT-1] of string =('Rocket','boy','otboy','explos');
+
+type
+  TSound_Form = class(TForm)
+    DXSound1: TDXSound;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormCreate(Sender: TObject);
+  private
+    { Private declarations }
+   SB : array [0..SOUND_COUNT-1] of TAudioFileStream;
+  public
+    { Public declarations }
+   procedure PlayRec; {проигрывание звуков}
+   procedure Silence; {все звуки выключены}
+   procedure Silence_Circl; {все циклические звуки выключены}
+  end;
+  TSndRec = record
+    Vol, Frec : smallint;
+    Play : Array [0..SOUND_COUNT-1] of boolean;
+  end;
+
+var
+  Sound_Form: TSound_Form;
+  OldRec, NewRec : TSndRec;
+
+implementation
+
+uses Wave, MMSystem;
+{$R *.DFM}
+
+procedure TSound_Form.PlayRec; {проигрывание звуков}
+var i : integer;
+begin
+    if stop_prog then begin
+     for i:=0 to SOUND_COUNT-1 do SB[i].Stop;
+     exit;
+    end;
+   if NewRec.Vol<>OldRec.Vol then SB[0].Volume:=NewRec.Vol;
+   if NewRec.Frec<>OldRec.Frec then SB[0].Frequency:=NewRec.Frec;
+   for i:=0 to SOUND_COUNT-1 do begin
+     if NewRec.Play[i] xor OldRec.Play[i] then  if NewRec.Play[i] then SB[i].Play else SB[i].Stop;
+     if not SB[i].Playing then begin
+       SB[i].Position:=0;
+       NewRec.Play[i]:=false;
+     end;
+   end;
+   OldRec:=NewRec;
+end;
+
+procedure TSound_Form.Silence; {все звуки выключены}
+var i : word;
+begin
+ for i:=0 to SOUND_COUNT-1 do NewRec.Play[i]:=false;
+end;
+
+procedure TSound_Form.Silence_Circl; {все циклические звуки выключены}
+var i : word;
+begin
+ for i:=0 to SOUND_COUNT-1 do
+ if PLAY_TYPE[i]=1 then NewRec.Play[i]:=false;
+end;
+
+procedure TSound_Form.FormClose(Sender: TObject; var Action: TCloseAction);
+var i : byte;
+begin
+  for i:=0 to SOUND_COUNT-1 do
+  if SB[i]<>nil then
+  begin
+    SB[i].Stop;
+    SB[i].Destroy;
+  end;
+  DXSound1.Finalize;
+end;
+
+procedure TSound_Form.FormCreate(Sender: TObject);
+var i : byte;
+  WaveFormat: TWaveFormatEx;
+begin
+  DXSound1.Initialize;
+  for i:=0 to SOUND_COUNT-1 do
+  begin
+    SB[i]:=TAudioFileStream.Create(DXSound1.DSound);
+    SB[i].AutoUpdate := True;
+    SB[i].BufferLength := 1000;
+    SB[i].FileName := 'wav\'+SOUND_NAME[i]+'.wav';
+    if PLAY_TYPE[i]=1 then SB[i].Looped :=true else SB[i].Looped :=false;
+    {  Setting of format of primary buffer.  }
+    MakePCMWaveFormatEx(WaveFormat, 44100, SB[i].Format.wBitsPerSample, 2);
+    DXSound1.Primary.SetFormat(WaveFormat);
+  end;
+end;
+
+end.
