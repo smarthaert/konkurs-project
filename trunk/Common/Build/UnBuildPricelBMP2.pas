@@ -1,0 +1,543 @@
+unit UnBuildPricelBMP2;
+
+interface
+uses
+  dglOpenGL, UnBuildTexture, UnVarConstOpenGL, UnBuildObject;
+
+  // Оптическая часть
+  procedure BuildPricel;
+  procedure Build_Scale;
+  procedure Build_Krug(num:word);
+  procedure Build_Shtorka;
+  procedure Build_Diafragma;
+  procedure Build_Filtr;
+  procedure Build_Zapot;
+
+var
+  PRICEL_N_N: integer;
+  PRICEL_N_DM: integer;
+  PRICEL_TKN: integer;
+  PRICEL_K_D2: integer;
+  PRICEL_N_D: integer;
+  PRICEL_K_D: integer;
+  PRICEL_K_DM: integer;
+  PRICEL_PTUR: integer;
+  PRICEL_N_NM: integer;
+  PRICEL_PTUR_MARKA: integer;
+  PRICEL_PTUR_ALT: integer;
+  PRICEL_BINOKL: integer;
+  KRUG1: integer;
+  KRUG2: integer;
+  KRUG3: integer;
+  KRUG4: integer;
+  KRUG5: integer;
+  KRUG6: integer;
+  DIAFRAGMA: integer;
+  FILTR: integer;
+  FILTR1: integer;
+  FILTR2: integer;
+  SHTORKA: integer;
+  ZAPOT_NAV: integer;
+  ZAPOT_MV: integer;
+  COMPAS_SCALE: integer;
+  COMPAS_STRELKA: integer;
+
+
+implementation
+
+procedure BuildPricel;
+begin
+  Build_Scale;
+  Build_Shtorka;
+  Build_Diafragma;
+  Build_Filtr;
+  Build_Krug(1);
+  Build_Krug(2);
+  Build_Krug(3);
+  Build_Krug(4);
+  Build_Krug(5);
+  Build_Krug(6);
+  Build_Zapot;
+end;
+
+procedure Build_Scale;
+const
+  mat: array[0..3] of GLfloat=(1,1,0,1);
+var a,b: real;
+begin
+  // Шкала БПК
+  PRICEL_N_D:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pri_N_D.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (PRICEL_N_D, GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.00432;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a/4, -0.05);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a/4, -0.05);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a/4, -0.05);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a/4, -0.05);
+    glEnd;
+  glEndList;
+
+  PRICEL_N_DM:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pri_N_DM.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  // Шкала БПК перемещающаяся
+  glNewList (PRICEL_N_DM, GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.00432;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a, -0.04988);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a, -0.04988);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a, -0.04988);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a, -0.04988);
+    glEnd;
+  glEndList;
+    // Шкала БПК ночная
+  PRICEL_N_N:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pricel5.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (PRICEL_N_N, GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.00432;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0.0, 0.0);
+      glVertex3f(-a, -a, -0.05);
+      glTexCoord2f( 0.0, 1.0);
+      glVertex3f(-a, a, -0.05);
+      glTexCoord2f(1.0, 1.0);
+      glVertex3f(a, a, -0.05);
+      glTexCoord2f(1.0, 0.0);
+      glVertex3f(a, -a, -0.05);
+    glEnd;
+  glEndList;
+  // Шкала ПТУР
+  PRICEL_PTUR:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pric_PTR3.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (PRICEL_PTUR,GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.00565;
+    a:=0.003;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a, -0.04996);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a, -0.04996);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a, -0.04996);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a, -0.04996);
+    glEnd;
+  glEndList;
+  PRICEL_PTUR_ALT:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pric_PTR3alt.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (PRICEL_PTUR_ALT,GL_COMPILE);
+    glDisable(GL_LIGHTING);
+    glColor3f(0,0,0);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.00565;
+    a:=0.003;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a, -0.0499);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a, -0.0499);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a, -0.0499);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a, -0.0499);
+    glEnd;
+    glEnable(GL_LIGHTING);
+  glEndList;
+  PRICEL_PTUR_MARKA:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pric_PTRMarka.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (PRICEL_PTUR_MARKA,GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,@mat);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.002;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a, -0.0498);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a, -0.0498);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a, -0.0498);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a, -0.0498);
+    glEnd;
+  glEndList;
+  // Подвижные шкалы балистики
+  PRICEL_N_NM:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pri_n_nm.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (PRICEL_N_NM,GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.00182;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a/2, -0.04995);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a/2, -0.04995);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a/2, -0.04995);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a/2, -0.04995);
+    glEnd;
+  glEndList;
+  // Шкала 1ПЗ
+  PRICEL_K_D:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pri_K_D.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (PRICEL_K_D, GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.00565;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a, -0.05);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a, -0.05);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a, -0.05);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a, -0.05);
+    glEnd;
+  glEndList;
+  // Шкала 1ПЗ перемещ
+  PRICEL_K_DM:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pri_K_DM.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (PRICEL_K_DM, GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.00565;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a/4, -0.04988);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a/4, -0.04988);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a/4, -0.04988);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a/4, -0.04988);
+    glEnd;
+  glEndList;
+  // Шкала 1ПЗ кратная
+  PRICEL_K_D2:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pri_K_D2.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (PRICEL_K_D2, GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.01145;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a, -0.0501);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a, -0.0501);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a, -0.0501);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a, -0.0501);
+    glEnd;
+  glEndList;
+  // Шкала ТКН
+  PRICEL_TKN:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Pri_TKN.bmp', 4, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (PRICEL_TKN, GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    a:=0.00445;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a, -0.05);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a, -0.05);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a, -0.05);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a, -0.05);
+    glEnd;
+  glEndList;
+  mat[0]:=0.2;
+  mat[1]:=0.2;
+  mat[2]:=0.2;
+  mat[3]:=0.4;
+  FILTR1:=glGenLists(1);
+  glNewList (FILTR1,GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glDisable(GL_TEXTURE_2D);
+    a:=0.0165;
+    glBegin(GL_QUADS);
+      glVertex3f(-a, -a, -0.04996);
+      glVertex3f(-a, a, -0.04996);
+      glVertex3f(a, a, -0.04996);
+      glVertex3f(a, -a, -0.04996);
+    glEnd;
+    glEnable(GL_TEXTURE_2D);
+  glEndList;
+
+  mat[0]:=1.0;
+  mat[1]:=0.4;
+  mat[2]:=0.2;
+  mat[3]:=0.5;
+  FILTR2:=glGenLists(1);
+  glNewList (FILTR2,GL_COMPILE);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,@mat);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat);
+    glDisable(GL_TEXTURE_2D);
+    a:=0.0165;
+    glBegin(GL_QUADS);
+      glVertex3f(-a, -a, -0.04996);
+      glVertex3f(-a, a, -0.04996);
+      glVertex3f(a, a, -0.04996);
+      glVertex3f(a, -a, -0.04996);
+    glEnd;
+    glEnable(GL_TEXTURE_2D);
+  glEndList;
+end;
+
+procedure Build_Krug(num:word);
+const
+ Level = 15;    // уровень детализации
+ x=0.5;
+ y=0.5;
+var
+ i : 0 .. Level - 1;
+ a,d,radius: real;  // радиус отверстия
+begin
+  d:=-0.0498;
+  case num of
+    1: begin
+      radius:= 0.49;
+      a:=0.0116;
+      KRUG1:=glGenLists(1);
+      glNewList (KRUG1, GL_COMPILE);// Создаём объект
+      glPushMatrix;
+      glScalef(a,a,1);
+    end;
+    2: begin
+      radius:= 0.4;
+      a:=0.033;
+      KRUG2:=glGenLists(1);
+      glNewList (KRUG2, GL_COMPILE);// Создаём объект
+      glPushMatrix;
+      glScalef(a,a,1);
+    end;
+    3: begin
+      radius:= 0.4;
+      a:=0.00725;
+      KRUG3:=glGenLists(1);
+      glNewList (KRUG3, GL_COMPILE);// Создаём объект
+      glPushMatrix;
+      glScalef(a,a,1);
+    end;
+    4: begin
+      radius:= 0.49;
+      a:=0.0116-0.00192;
+      KRUG4:=glGenLists(1);
+      glNewList (KRUG4, GL_COMPILE);// Создаём объект
+      glPushMatrix;
+      glScalef(a,a,1);
+    end;
+    5: begin
+      radius:= 0.42;
+      KRUG5:=glGenLists(1);
+      glNewList (KRUG5, GL_COMPILE);// Создаём объект
+      glPushMatrix;
+      glScalef(0.0176,0.0176,1);
+    end;
+    6: begin
+      radius:= 0.49;
+      a:=0.00266;
+      KRUG6:=glGenLists(1);
+      glNewList (KRUG6, GL_COMPILE);// Создаём объект
+      glPushMatrix;
+      glScalef(a,a,1);
+    end;
+  end;
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_LIGHTING);
+  glColor3f(0.0, 0.0, 0.0);
+    glBegin(GL_QUAD_STRIP);
+      // верхняя четверть
+      for i := 0 to Level - 1 do begin
+        glVertex3f(radius * sin (Pi * i / (2 * Level) - Pi /4),
+                    radius * cos (Pi * i / (2 * Level) - Pi /4), d);
+        glVertex3f(i / Level - x, y, d);
+        glVertex3f(radius * sin (Pi * (i + 1) / (2 * Level) - Pi /4),
+                    radius * cos (Pi * (i + 1) / (2 * Level) - Pi /4), d);
+        glVertex3f((i + 1) / Level - x, y, d);
+      end;
+    glEnd;
+    // правая четверть
+    glBegin(GL_QUAD_STRIP);
+      for i := 0 to Level - 1 do begin
+        glVertex3f(radius * sin (Pi * i / (2 * Level) + Pi / 4),
+                   radius * cos (Pi * i / (2 * Level) + Pi / 4), d);
+        glVertex3f(x, y - i / Level, d);
+        glVertex3f(radius * sin (Pi * (i + 1) / (2 * Level) + Pi / 4),
+                   radius * cos (Pi * (i + 1) / (2 * Level) + Pi / 4), d);
+        glVertex3f(x, y - (i + 1)/ Level, d);
+      end;
+    glEnd;
+    // левая четверть
+    glBegin(GL_QUAD_STRIP);
+      for i := 0 to Level - 1 do begin
+        glVertex3f(radius * sin (Pi * i / (2 * Level) - 3 * Pi / 4 ),
+                radius * cos (Pi * i / (2 * Level) - 3 * Pi / 4), d);
+        glVertex3f(-x, i / Level - y, d);
+        glVertex3f(radius * sin (Pi * (i + 1) / (2 * Level) - 3 * Pi / 4 ),
+                radius * cos (Pi * (i + 1) / (2 * Level) - 3 * Pi / 4), d);
+        glVertex3f(-x, (i + 1) / Level - y, d);
+      end;
+    glEnd;
+    // нижняя четверть
+    glBegin(GL_QUAD_STRIP);
+      for i := 0 to Level - 1 do begin
+        glVertex3f(radius * sin (Pi * i / (2 * Level) + 3 * Pi / 4 ),
+                 radius * cos (Pi * i / (2 * Level) + 3 * Pi / 4), d);
+        glVertex3f(x - i / Level, -y, d);
+        glVertex3f(radius * sin (Pi * (i + 1) / (2 * Level) + 3 * Pi / 4),
+                 radius * cos (Pi * (i + 1) / (2 * Level) + 3 * Pi / 4), d);
+        glVertex3f(x - (i + 1) / Level, -y, d);
+      end;
+    glEnd;
+  glPopMatrix;
+  glColor3f(1.0, 1.0, 1.0);
+  glEnable(GL_LIGHTING);
+  glEnable(GL_TEXTURE_2D);
+  glEndList;
+end;
+
+procedure Build_Shtorka;
+const
+ mat_d : Array [0..3] of GLFloat = (0,0,0,1); //
+begin
+  SHTORKA:=glGenLists(1);
+  glNewList (SHTORKA, GL_COMPILE);// Создаём объект
+    glDisable(GL_TEXTURE_2D);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat_d);//Меняем прозрачность материала
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat_d);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,@mat_d);
+    glPushMatrix;
+      glBegin(GL_QUADS);
+        glTexCoord2f(0,0);
+        glVertex3f(-0.02, -0.02, -0.0502);
+        glTexCoord2f(1,0);
+        glVertex3f(0.02, -0.02, -0.0502);
+        glTexCoord2f(1,1);
+        glVertex3f(0.02, 0.02, -0.0502);
+        glTexCoord2f(0,1);
+        glVertex3f(-0.02, 0.02, -0.0502);
+      glEnd;
+    glPopMatrix;
+    glEnable(GL_TEXTURE_2D);
+  glEndList ;// Создаём объект
+end;
+
+procedure Build_Zapot;
+var
+  a, b: real;
+begin
+  ZAPOT_NAV:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Zapot.bmp', 9, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (ZAPOT_NAV, GL_COMPILE);// Создаём объект
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    glPushMatrix;
+    a:=0.0035;
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -a, -0.0491);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, a, -0.0491);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, a, -0.0491);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -a, -0.0491);
+    glEnd;
+    glPopMatrix;
+  glEndList ;// Создаём объект
+  ZAPOT_MV:=glGenLists(1);
+  numTexture:=CreateTexture('Pricel\Zapot.bmp', 9, TEXTURE_FILTR_ON);//текстура накладывается
+  glNewList (ZAPOT_MV, GL_COMPILE);// Создаём объект
+    glBindTexture(GL_TEXTURE_2D, numTexture);
+    glPushMatrix;
+    a:=0.02;
+    b:=0.009;
+      glBegin(GL_QUADS);
+      glTexCoord2f(0, 0);
+      glVertex3f(-a, -b, -0.0491);
+      glTexCoord2f( 0, 1);
+      glVertex3f(-a, b, -0.0491);
+      glTexCoord2f(1, 1);
+      glVertex3f(a, b, -0.0491);
+      glTexCoord2f(1, 0);
+      glVertex3f(a, -b, -0.0491);
+    glEnd;
+    glPopMatrix;
+  glEndList ;// Создаём объект
+end;
+
+procedure Build_Diafragma;
+begin
+  DIAFRAGMA:=glGenLists(1);
+  glNewList (DIAFRAGMA, GL_COMPILE);
+    glDisable(GL_TEXTURE_2D);
+    glPushMatrix;
+      glTranslatef(0, 0, -0.0502);
+      gluDisk(Quadric, 0, 0.008,16,1);
+    glPopMatrix;
+    glEnable(GL_TEXTURE_2D);
+  glEndList ;// Создаём объект
+end;
+
+procedure Build_Filtr;
+const
+ mat_d : Array [0..3] of GLFloat = (0,1,1,0.3); //
+begin
+  FILTR:=glGenLists(1);
+  glNewList(FILTR, GL_COMPILE);// Создаём объект
+    glDisable(GL_TEXTURE_2D);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,@mat_d);//Меняем прозрачность материала
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,@mat_d);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,@mat_d);
+    glPushMatrix;
+      glTranslatef(0, 0, -0.0501);
+      gluDisk(Quadric, 0, 0.0055,16,1);
+    glPopMatrix;
+    glEnable(GL_TEXTURE_2D);
+  glEndList ;// Создаём объект
+end;
+
+procedure Build_Compas;
+begin
+  MontObject('res/Compas/Scale.shp',COMPAS_SCALE);
+  MontObject('res/Compas/Strelka.shp',COMPAS_STRELKA);
+end;
+
+//============Конец оптической части======================
+
+
+end.
