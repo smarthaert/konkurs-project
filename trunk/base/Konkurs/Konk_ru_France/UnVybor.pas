@@ -1,0 +1,44 @@
+unit UnVybor;  //Выбор упражнений
+
+interface
+
+uses Windows, SysUtils, Classes, Graphics, Forms, Controls, StdCtrls,
+  Buttons, ExtCtrls, ComCtrls;
+
+type
+  TOKBottomDlg1 = class(TForm)
+    OKBtn: TButton;
+    CancelBtn: TButton;
+    Bevel1: TBevel;
+    TreeView1: TTreeView;
+    procedure FormCreate(Sender: TObject);
+    procedure TreeView1Click(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    Change: boolean;
+  end;
+
+var
+  OKBottomDlg1: TOKBottomDlg1;
+
+implementation
+
+{$R *.DFM}
+
+procedure TOKBottomDlg1.FormCreate(Sender: TObject);
+begin
+  Left:=5;
+  Width:=721;
+  Top:=5;
+//  Height:=762;
+  Change:=false;
+  TreeView1.FullExpand;
+end;
+
+procedure TOKBottomDlg1.TreeView1Click(Sender: TObject);
+begin
+ Change:=true;
+end;
+
+end.
