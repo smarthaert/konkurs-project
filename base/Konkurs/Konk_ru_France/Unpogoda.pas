@@ -1,0 +1,384 @@
+unit UnPogoda;   //Ввод данных о погодных условиях
+
+interface
+
+uses Windows, SysUtils, Classes, Graphics, Forms, Controls, StdCtrls,
+  Buttons, ExtCtrls, ComCtrls;
+
+type
+  TOKBottomDlg2 = class(TForm)
+    OKBtn: TButton;
+    CancelBtn: TButton;
+    UpDown1: TUpDown;
+    UpDown2: TUpDown;
+    UpDown3: TUpDown;
+    UpDown4: TUpDown;
+    UpDown5: TUpDown;
+    UpDown6: TUpDown;
+    UpDown7: TUpDown;
+    Image1: TImage;
+    Image2: TImage;
+    Image3: TImage;
+    Image4: TImage;
+    Image5: TImage;
+    Image6: TImage;
+    Image7: TImage;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    Label7: TLabel;
+    Button1: TButton;
+    Bevel1: TBevel;
+    Bevel2: TBevel;
+    Bevel3: TBevel;
+    Bevel4: TBevel;
+    Image8: TImage;
+    Image9: TImage;
+    Image10: TImage;
+    Image11: TImage;
+    Image12: TImage;
+    Label8: TLabel;
+    procedure FormCreate(Sender: TObject);
+    procedure Scale(x1,y1: integer);
+    procedure FormPaint(Sender: TObject);
+    procedure Stolb(x1,y1,t: integer);
+    procedure StolbGor(x1,y1,t: integer);
+    procedure ScaleGor(x1,y1,x2,y2: integer);
+    procedure Rumb(xc,yc,r: integer);
+    procedure Napravl(Az: integer);
+    procedure UpDown1Click(Sender: TObject; Button: TUDBtnType);
+    procedure UpDown3Click(Sender: TObject; Button: TUDBtnType);
+    procedure UpDown2Click(Sender: TObject; Button: TUDBtnType);
+    procedure UpDown4Click(Sender: TObject; Button: TUDBtnType);
+    procedure FormKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure UpDown5Click(Sender: TObject; Button: TUDBtnType);
+    procedure UpDown6Click(Sender: TObject; Button: TUDBtnType);
+    procedure UpDown7Click(Sender: TObject; Button: TUDBtnType);
+    procedure FormActivate(Sender: TObject);
+    procedure Set_m_v(a:word);
+    procedure Set_m_t(a:word);
+    procedure Set_m_tv(a:word);
+    procedure Set_m_ks(a:word);
+    procedure Set_m_pv(a:word);
+  private
+    { Private declarations }
+  public
+   m_t: integer;            //Температура заряда  4
+   m_tv: integer;            //Температура воздуха 4
+   m_v: integer;            //Скорость ветра 4
+   m_az: integer;           //Азимут ветра    4
+   m_pv: integer;           //Давление воздуха
+   m_ks: integer;           //Износ канала ствола
+   m_inten_fog: integer;    // Плотность тумана
+   m_fog: boolean;    // Наличие тумана
+  end;
+
+var
+   OKBottomDlg2: TOKBottomDlg2;
+   x2,y2: integer;  // Размеры прямоуг шкал
+   xc: integer;     // Положение центра и размер круглой шкалы
+   yc: integer;     //
+   rc: integer;     //
+   Napr_Strel: array[1..24] of TBitmap;// Cтрелка направления
+   Napr_Str: array[1..7] of TBitmap;// Cтрелка направления
+
+implementation
+
+uses UnOther, Main;
+
+{$R *.DFM}
+
+procedure TOKBottomDlg2.FormCreate(Sender: TObject);
+var a: word;
+begin
+  m_t:=-14;
+  m_v:=23;
+  m_az:=127;
+  m_pv:=750;
+  x2:=63;
+  y2:=205;
+  xc:=200;	// Положение центра и размер круглой шкалы
+  yc:=135;
+  rc:=85;
+  for a:=1 to 8 do begin
+    Napr_Strel[a]:=TBitmap.Create;;
+    Napr_Strel[a].LoadFromFile(DirBase+'bmp\Interf\Strel_'+inttostr(a)+'.bmp');
+  end;
+  for a:=1 to 7 do begin
+    Napr_Str[a]:=TBitmap.Create;;
+    Napr_Str[a].LoadFromFile(DirBase+'bmp\Interf\Str_'+inttostr(a)+'.bmp');
+  end;
+end;
+
+procedure TOKBottomDlg2.Scale(x1,y1: integer);
+var a: integer;
+begin
+  Canvas.Rectangle(x1,y1,x1+x2,y1+y2);
+    for a:=0 to 53 do begin                     	// Шкала
+      Canvas.MoveTo(x1+10,y1+y2-40-a*3);
+      if (a=0) or (a=10) or (a=20) or (a=30) or (a=40) or (a=50) then
+		Canvas.LineTo(x1+20,y1+y2-40-a*3)    //Деления через 10
+      else if (a=5) or(a=15)or(a=25)or(a=35)or(a=45)then Canvas.LineTo(x1+16,y1+y2-40-a*3)    //Деления через 5
+		else Canvas.LineTo(x1+13,y1+y2-40-a*3);  //Деления через 1
+    end;
+end;
+
+procedure TOKBottomDlg2.ScaleGor(x1,y1,x2,y2: integer);
+var a: integer;
+begin
+  Canvas.Rectangle(x1,y1,x1+x2,y1+y2);
+    for a:=0 to 40 do begin                     	// Шкала
+      Canvas.MoveTo(x1+10+a*3,y1+40);
+//      Canvas.MoveTo(x1+10,y1+y2-40-a*3);
+      if (a=0) or (a=10) or (a=20) or (a=30) or (a=40) or (a=50) then
+		Canvas.LineTo(x1+10+a*3,y1+50)    //Деления через 10
+      else if (a=5) or(a=15)or(a=25)or(a=35)or(a=45)then Canvas.LineTo(x1+10+a*3,y1+46)    //Деления через 5
+		else Canvas.LineTo(x1+10+a*3,y1+43);  //Деления через 1
+    end;
+end;
+
+procedure TOKBottomDlg2.FormPaint(Sender: TObject);
+begin
+  UpDown1.Position:=m_t;           // Т заряда
+  UpDown4.Position:=m_inten_fog div 5;
+  label8.Caption:=inttostr(m_inten_fog)+' %';
+  UpDown3.Position:=m_v;
+  UpDown5.Position:=m_tv;         // Т воздуха
+  UpDown6.Position:=m_pv;         // Р атмосф
+  UpDown7.Position:=m_ks;         // Износ канала ствола
+end;
+
+procedure TOKBottomDlg2.StolbGor(x1,y1,t: integer);
+var a: integer;
+s: string;
+begin
+  Canvas.Pen.Color:=clFuchsia;
+  for a:=0 to 5 do Canvas.TextOut(x1+7+a*30,y1+27,IntToStr(a));// Шкала
+  Canvas.Rectangle(x1+5,y1+5,x1+130,y1+9);
+  Canvas.MoveTo(x1+5,y1+6);				//Ползунок
+  Canvas.LineTo(x1+11+abs(t*3),y1+6);
+  Canvas.MoveTo(x1+5,y1+7);				//Ползунок
+  Canvas.LineTo(x1+11+abs(t*3),y1+7);
+  Canvas.Pen.Color:=clBlack;
+end;
+
+procedure TOKBottomDlg2.Stolb(x1,y1,t: integer);
+var a: integer;
+s: string;
+begin
+  if t>500 then begin
+    Canvas.Pen.Color:=clGreen;
+    for a:=0 to 5 do Canvas.TextOut(x1+27,y1+y2-46-a*30,IntToStr(600+a*50));// Шкала
+    t:=(t-600) div 5;
+  end
+  else begin
+    // При отрицательном значении изменить цвет
+    if t>=0 then begin
+      Canvas.Pen.Color:=clRed;
+      s:=' ';
+    end
+    else begin
+      Canvas.Pen.Color:=clBlue;
+      s:='-';
+    end;
+    for a:=0 to 5 do
+       if a=0 then Canvas.TextOut(x1+27,y1+y2-46-a*30,IntToStr(a*10))// Шкала
+            else Canvas.TextOut(x1+27,y1+y2-46-a*30,s+IntToStr(a*10));
+  end;
+  Canvas.Rectangle(x1+5,y1+y2-33,x1+9,y1+y2-40-160);
+  Canvas.MoveTo(x1+7,y1+y2-35);				//Ползунок
+  Canvas.LineTo(x1+7,y1+y2-40-abs(t*3));
+  Canvas.MoveTo(x1+6,y1+y2-35);
+  Canvas.LineTo(x1+6,y1+y2-40-abs(t*3));
+  Canvas.Pen.Color:=clBlack;
+end;
+
+procedure TOKBottomDlg2.Rumb(xc,yc,r: integer);
+var a,c: integer;
+b,d,x,y: real;
+begin
+  d:=r;
+  for a:=0 to 39 do begin
+    b:=a*9;
+    b:=b/57.3;
+    x:=d * sin(b);
+    y:=d * cos(b);
+    Canvas.MoveTo(xc+round(x),yc-round(y));
+    if (b=0)or(b=45)or(b=90)or(b=135)or(b=180)or(b=225)or(b=270)or(b=315) then begin
+      c:=10;
+      Canvas.Pen.Width:=2;
+    end
+    else begin
+      c:=8;
+      Canvas.Pen.Width:=1;
+    end;
+    x:=(d+c) * sin(b);
+    y:=(d+c) * cos(b);
+    Canvas.LineTo(xc+round(x),yc-round(y));
+  end;
+  Canvas.Pen.Width:=1;
+  Canvas.TextOut(xc-4,yc-r-10-10,'N');
+  Canvas.TextOut(xc+r+10+3,yc-8,'O');
+  Canvas.TextOut(xc-4,yc+r+10,'S');
+  Canvas.TextOut(xc-r-10-15,yc-8,'W');
+end;
+
+procedure TOKBottomDlg2.Napravl(Az: integer);
+var b: word;
+begin
+  b:=1;
+  case Az of
+    0..22,338..360:b:=1;
+    23..67:b:=2;
+    68..112:b:=3;
+    113..157:b:=4;
+    158..202:b:=5;
+    203..248:b:=6;
+    249..292:b:=7;
+    293..337:b:=8;
+  end;
+  Image2.Canvas.Draw(0,0,Napr_Strel[b]);
+end;
+
+procedure TOKBottomDlg2.UpDown1Click(Sender: TObject; Button: TUDBtnType);
+begin
+  m_t:=UpDown1.Position;
+  Set_m_t(m_t);
+end;
+
+procedure TOKBottomDlg2.UpDown3Click(Sender: TObject; Button: TUDBtnType);
+begin
+  m_v:=UpDown3.Position;
+  Set_m_v(m_v);
+end;
+
+procedure TOKBottomDlg2.UpDown2Click(Sender: TObject; Button: TUDBtnType);
+begin
+  if UpDown2.Position>359 then  UpDown2.Position:=0;
+  if UpDown2.Position<0 then  UpDown2.Position:=315;
+  m_az:=UpDown2.Position;
+  Napravl(m_az);
+end;
+
+procedure TOKBottomDlg2.UpDown4Click(Sender: TObject; Button: TUDBtnType);
+begin
+{  case UpDown4.Position of
+    0: m_inten_fog:=0;
+    1: m_inten_fog:=10;
+    2: m_inten_fog:=20;
+    3: m_inten_fog:=60;
+    4: m_inten_fog:=100;
+  end;}
+  m_inten_fog:=UpDown4.Position*5;
+  label8.Caption:=inttostr(m_inten_fog)+' %';
+end;
+procedure TOKBottomDlg2.FormKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if key=VK_ESCAPE then close;
+end;
+
+procedure TOKBottomDlg2.UpDown5Click(Sender: TObject; Button: TUDBtnType);
+begin
+  m_tv:=UpDown5.Position;
+  Set_m_tv(m_tv);
+end;
+
+procedure TOKBottomDlg2.UpDown6Click(Sender: TObject; Button: TUDBtnType);
+begin
+  m_pv:=UpDown6.Position;
+  Set_m_pv(m_pv);
+end;
+
+procedure TOKBottomDlg2.UpDown7Click(Sender: TObject; Button: TUDBtnType);
+begin
+  m_ks:=UpDown7.Position;
+  Set_m_ks(m_ks);
+end;
+
+procedure TOKBottomDlg2.FormActivate(Sender: TObject);
+begin
+  Napravl(m_az);
+  UpDown2.Position:=m_az;
+  Set_m_v(m_v);
+  UpDown3.Position:=m_v;
+  Set_m_t(m_t);
+  UpDown1.Position:=m_t;
+  Set_m_tv(m_tv);
+  UpDown5.Position:=m_tv;
+  Set_m_pv(m_pv);
+  UpDown6.Position:=m_pv;
+  Set_m_ks(m_ks);
+  UpDown7.Position:=m_ks;
+end;
+
+procedure TOKBottomDlg2.Set_m_v(a:word);
+begin
+  a:=1;
+  case m_v of
+    0..2:a:=1;
+    3..7:a:=2;
+    8..12:a:=3;
+    13..17:a:=4;
+    18..22:a:=5;
+    23..28:a:=6;
+    29..30:a:=7;
+  end;
+  Image12.Canvas.Draw(0,0,Napr_Str[a]);
+end;
+
+procedure TOKBottomDlg2.Set_m_t(a:word);
+begin
+  a:=1;
+  case m_t of
+    -50..-25:a:=1;
+    -24..-15:a:=2;
+    -14..-5:a:=3;
+    -4..5:a:=4;
+    6..15:a:=5;
+    16..25:a:=6;
+    26..50:a:=7;
+  end;
+  Image8.Canvas.Draw(0,0,Napr_Str[a]);
+end;
+
+procedure TOKBottomDlg2.Set_m_tv(a:word);
+begin
+  a:=1;
+  case m_tv of
+    -50..-25:a:=1;
+    -24..-15:a:=2;
+    -14..-5:a:=3;
+    -4..5:a:=4;
+    6..15:a:=5;
+    16..25:a:=6;
+    26..50:a:=7;
+  end;
+  Image9.Canvas.Draw(0,0,Napr_Str[a]);
+end;
+
+procedure TOKBottomDlg2.Set_m_pv(a:word);
+begin
+  a:=1;
+  case m_pv of
+    700..725:a:=1;
+    726..735:a:=2;
+    736..745:a:=3;
+    746..755:a:=4;
+    756..765:a:=5;
+    766..775:a:=6;
+    776..790:a:=7;
+  end;
+  Image10.Canvas.Draw(0,0,Napr_Str[a]);
+end;
+
+procedure TOKBottomDlg2.Set_m_ks(a:word);
+begin
+  Image11.Canvas.Draw(0,0,Napr_Str[a+1]);
+end;
+end.
+

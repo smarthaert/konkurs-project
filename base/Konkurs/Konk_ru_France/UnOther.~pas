@@ -1,0 +1,901 @@
+unit UnOther;
+
+interface
+
+uses
+   Dialogs,SysUtils,Main,Graphics, Classes;
+
+const
+  TIK_SEK=18;
+  MAX_COL_ORIENT=15;         // Максимальное количество ориентиров
+  COL_MAX_MICH=15;           // Максимальное количество мишеней
+  MAX_TYPE_TEX=10;           // Максимальное количество типов техники
+  COL_MAX_MICH_TAK=30;       // Максимальное количество мишеней для тактики
+  COL_MAX_OBJEKT_TAK_TEX=15; // Максимальное количество техники для тактики
+  COL_MAX_POINTS=10;          // Максимальное количество точек на маршруте
+  COL_MAX_POINTS_TAK=4;      // Максимальное количество точек на маршруте для тактики
+  COL_MAX_POINTS_TAK_TEX=15; // Максимальное количество точек на маршруте для тактики(Техника)
+  COL_EKIP=3;
+  COL_TEXNIKA_MODEL=15;
+
+
+  MASHT_RIS=100;        // соотношение :   Размер(дм)/Размер на экране 0,1 м - 1 ед
+  DDD=10;               /// Для значений в метрах
+  ANGL_PADEN=270;            // Угол опускания мишеней
+  NONE=0;
+  UPRAV_SNAR=4;
+
+
+SOUND_COUNT = 3;
+PLAY_TYPE : array [0..SOUND_COUNT-1] of byte = (0,0,0);
+RealCount = 11;
+
+type
+  TBox_Tank=record                           // Структура Данных
+    x1_box: real;
+    y1_box: real;
+    h1_box: real;
+    x2_box: real;
+    y2_box: real;
+    h2_box: real;
+  end;
+
+  TBMP=record                           // Структура Данных
+   Xtek,
+   Ytek,
+   Htek,
+   AzBase,
+   UmBase,
+   Tangage,
+   X_PTUR,Y_PTUR,H_PTUR,Tang_X,Tang_Y,Tang_H: real;   //Текущие координаты снаряда
+   UmPricel:          real;              // Поворот прицела по углу места
+   AzPricel:          real;              // Поворот прицела по азимуту
+   Hpric:             real;              //  Высота точки наблюдения
+   Kratn_Pric:        real;
+   Reserv1: real;
+   Reserv2: real;
+   Reserv3: real;
+   Reserv4: real;
+   Reserv5: real;
+   Reserv6: real;
+   Col_Upr: word;                       // Количество управляемых
+   Kvit_NA: word;
+   Res1: word;
+   Res2: word;
+   lumen: word;
+   Mode: word;
+   Num_destroy: word;
+   Start_PTUR:   boolean;               //
+   Time_Pusk,
+   Stopor,                               // Стопор башни
+   lum,
+   Filtr,                                // Фильтр ПДПН
+   StopPush: boolean;                             // Cтопор пушки
+  end;
+
+  TModel=record                         // Структура Данных по танкам
+    Xtek, Ytek, Htek: real;             // Текущие координаты   x,z,y
+    AzBase:           real;             // Поворот
+    UmBase:           real;             // Продольный наклон  базовой машины
+    Kren:             real;             // Поперечный наклон
+    UmPushka:         real;             // Положение пушки
+    AzBashn:          real;             // Поворот башни
+    Start:            boolean;          // Начало движения
+    Typ:              byte;             // Информация о танке
+    Akt:              byte;             // Активность танка
+    Other:            word;             // Другая информация(1-синхронизация)
+    Skorost:           word;             // Другая информация (Пыль)
+  end;
+  TTarg=record                         // Структура Данных по танкам
+    x_target: real;
+    y_target: real;
+    h_target: real;
+  end;
+  TSndRec = record
+    Vol, Frec : smallint;
+    Play : Array [0..SOUND_COUNT-1] of boolean;
+  end;
+  TOrg_Upr_Rm=record                    // Органы управления рабочих мест //80
+    nav_imp: array[0..3] of byte;
+  end;
+  ///Структура для ориентиров
+  TOrient=record
+    Col_orient: word;
+    Typ_orient:array[1..MAX_COL_ORIENT] of word;      // Координаты опорных точек
+    Xorient:array[1..MAX_COL_ORIENT] of real;      // Координаты опорных точек
+    Yorient:array[1..MAX_COL_ORIENT] of real;
+    Horient:array[1..MAX_COL_ORIENT] of real;      // Для воздушных целей
+  end;
+  ///Структура для ориентиров, упакованных для передачи
+  TOriRec=record
+    Col_orient: byte;
+    Typ_orient:array[1..MAX_COL_ORIENT] of byte;
+    Xorient:array[1..MAX_COL_ORIENT] of word;      // Координаты опорных точек
+    Yorient:array[1..MAX_COL_ORIENT] of word;
+  end;
+  // Структура для сохранения исходных значений в ходе выполнения упражнения
+  // Боекомплект
+  TBk=record                            // Боекомплект
+    Col_Upr: word;                      // Количество управляемых
+  end;
+  TTarget=record                       // Описание мишени
+    Num: word;                         // Номер мишени
+    Aktiv: word;                       // Активность мишени
+    Color_Mask: word;                  // Цвет мишени
+    Mov: boolean;                      // Тип- не движется/движется
+    Air: boolean;                      // Тип- наземная/воздушная
+    Tst: word;                         // Время появления
+    Tend: word;                        // Время удаления
+    ColPoints: word;                   // Количество опорных точек
+                                       // Точка № 0 - стартовая
+    Xtek:array[0..COL_MAX_POINTS] of integer;      // Координаты опорных точек
+    Ytek:array[0..COL_MAX_POINTS] of integer;
+    Htek:array[0..COL_MAX_POINTS] of integer;      // Для воздушных целей
+    Tstop:array[0..COL_MAX_POINTS] of word;        // Время остановки в точке
+    Skor:array[0..COL_MAX_POINTS] of integer;      // Cкорость движения на участках
+    Visible:array[0..COL_MAX_POINTS] of boolean;   // Видимость на участке
+  end;
+  TTask=record                          // Структура задач
+    m_t: integer;           //Температура заряда  4
+    m_tv: integer;          //Температура воздуха 4
+    m_v: integer;           //Скорость ветра 4
+    m_az: integer;          //Азимут ветра    4
+    m_pv: integer;          //Давление воздуха
+    m_ks: integer;          //Износ канала ствола
+    Temp: word;             //Время суток      4
+    Ceson: word;            //Время года        4
+    Mestn: word;            //Местность          4
+    m_inten_fog: word;      // Плотность тумана
+    m_index: word;          //Индекс задачи
+    m_fog: boolean;         // Плотность тумана
+    NumKvit:byte;           // Номер квитанции
+    Tstr: word;             // Время на стрельбу
+    Col_targ: word;         // Количество мишеней
+    Reserv1: word;
+    Reserv2: word;
+    Reserv3: word;
+    Reserv4: word;
+    Reserv5: word;
+    Reserv6: word;
+    Bk: TBk;                // Боекомплект
+
+    typeTarget: array[1..COL_MAX_MICH] of byte;   // Описание мишеней
+    Color_Mask: array[1..COL_MAX_MICH] of byte;   // Описание мишеней
+    Orient: TOrient;
+    Target: array[1..3,1..COL_MAX_MICH] of TTarget;   // Описание мишеней
+  end;
+
+  TTTask=record                          // Структура задач
+    m_t: integer;           //Температура заряда  4
+    m_tv: integer;          //Температура воздуха 4
+    m_v: integer;           //Скорость ветра 4
+    m_az: integer;          //Азимут ветра    4
+    m_pv: integer;          //Давление воздуха
+    m_ks: integer;          //Износ канала ствола
+    Temp: word;             //Время суток      4
+    Ceson: word;            //Время года        4
+    Mestn: word;            //Местность          4
+    m_inten_fog: word;      // Плотность тумана
+    m_index: word;          //Индекс задачи
+    m_fog: boolean;         // Плотность тумана
+    NumKvit:byte;           // Номер квитанции
+    Tstr: word;             // Время на стрельбу
+    Col_targ: word;         // Количество мишеней
+    Reserv1: word;
+    Reserv2: word;
+    Reserv3: word;
+    Reserv4: word;
+    Reserv5: word;
+    Reserv6: word;
+    Bk: TBk;                // Боекомплект
+
+    typeTarget: array[1..COL_MAX_MICH] of byte;   // Описание мишеней
+    Color_Mask: array[1..COL_MAX_MICH] of byte;   // Описание мишеней
+    Orient: TOrient;
+  
+  end;
+
+  // Структуры для расчёта текущего положения мишеней
+  // Стрельба
+  TTargetR=record                       // Описание мишени
+    Xtek:array[1..3,0..COL_MAX_POINTS] of real;      // Координаты опорных точек
+    Ytek:array[1..3,0..COL_MAX_POINTS] of real;
+    Htek:array[1..3,0..COL_MAX_POINTS] of real;      //
+    Htek_const:array[1..3,0..COL_MAX_POINTS] of real;      //
+    Skor:array[0..COL_MAX_POINTS] of real;       // Cкорость движения на участках
+    Vxtek:array[0..COL_MAX_POINTS] of real;
+    Vytek:array[0..COL_MAX_POINTS] of real;
+    Vhtek:array[0..COL_MAX_POINTS] of  real;      // Для воздушных целей
+    Time_stop:array[0..COL_MAX_POINTS] of  integer;   //Время остановки в точке
+    Time_mov:array[0..COL_MAX_POINTS] of  integer;   //Время движения до следующей точки
+    PointTek: word;
+  end;
+  // Тактика
+  TTargetR_TAK=record                       // Описание мишени
+    Xtek:array[0..COL_MAX_POINTS_TAK] of real;      // Координаты опорных точек
+    Ytek:array[0..COL_MAX_POINTS_TAK] of real;
+    Htek:array[0..COL_MAX_POINTS_TAK] of real;
+    Tstop:array[0..COL_MAX_POINTS_TAK] of word;        // Время остановки в точке
+    Skor:array[0..COL_MAX_POINTS_TAK] of real;      // Cкорость движения на участках
+    Visible:array[0..COL_MAX_POINTS_TAK] of boolean;   // Видимость на участке
+    Vxtek:array[0..COL_MAX_POINTS] of real;
+    Vytek:array[0..COL_MAX_POINTS] of real;
+    Vhtek:array[0..COL_MAX_POINTS] of  real;         // Для воздушных целей
+    Time_stop:array[0..COL_MAX_POINTS] of  integer;  //Время остановки в точке
+    Time_mov:array[0..COL_MAX_POINTS] of  integer;   //Время движения до следующей точки
+    PointTek: word;
+    Htek_const:array[0..COL_MAX_POINTS_TAK] of real;
+  end;
+  // Структуры для передачи
+  /// Стрельба
+  TTarRec=record                       // Описание мишени
+    Num: word;                         // Номер мишени
+    Tst: word;                         // Время появления
+    Tend: word;                        // Время удаления
+    ColPoints: word;                   // Количество опорных точек
+    Aktiv: byte;                       // Активность мишени
+    Color_Mask: byte;                  // Цвет мишени
+    Mov: boolean;                      // Тип- не движется/движется
+    Air: boolean;                      // Тип- наземная/воздушная
+                                       // Точка № 0 - стартовая
+    Xtek:array[1..3,0..COL_MAX_POINTS] of integer;      // Координаты опорных точек
+    Ytek:array[1..3,0..COL_MAX_POINTS] of word;
+    Htek:array[0..COL_MAX_POINTS] of word;      // Для воздушных целей
+    Tstop:array[0..COL_MAX_POINTS] of word;        // Время остановки в точке
+    Skor:array[0..COL_MAX_POINTS] of word;      // Cкорость движения на участках
+    Visible:array[0..COL_MAX_POINTS] of boolean;   // Видимость на участке
+  end;
+  TTaskRec=record                         // Структура задач
+    m_t: integer;           //Температура заряда  4
+    m_tv: integer;          //Температура воздуха 4
+    m_v: word;           //Скорость ветра 4
+    m_az: word;          //Азимут ветра    4
+    m_pv: word;          //Давление воздуха
+    m_ks: word;          //Износ канала ствола
+    m_inten_fog: word;      // Плотность тумана
+    m_index: word;          //Индекс задачи
+    Tstr: word;             // Время на стрельбу
+    Col_targ: word;         // Количество мишеней
+    Temp: byte;             //Время суток      4
+    Ceson: byte;            //Время года        4
+    Mestn: byte;            //Местность          4
+    NumKvit:byte;           // Номер квитанции
+    m_fog: boolean;         // Плотность тумана
+    Bk: TBk;                // Боекомплект
+    OriRec: TOriRec;
+    TarRec: array[1..COL_MAX_MICH] of TTarRec;   // Описание мишеней
+  end;
+  /// Тактика
+  TTarRec_TAK=record                       // Описание мишени
+    Num: byte;                         // Номер мишени
+    ColPoints: byte;                   // Количество опорных точек
+    Aktiv: byte;                       // Активность мишени
+    Color_Mask: byte;                  // Цвет мишени
+    Tst: word;                         // Время появления
+    Tend: word;                        // Время удаления
+    Xtek:array[0..COL_MAX_POINTS_TAK] of word;      // Координаты опорных точек
+    Ytek:array[0..COL_MAX_POINTS_TAK] of word;
+    Htek:array[0..COL_MAX_POINTS_TAK] of word;
+    Tstop:array[0..COL_MAX_POINTS_TAK] of word;        // Время остановки в точке
+    Skor:array[0..COL_MAX_POINTS_TAK] of byte;      // Cкорость движения на участках
+    Visible:array[0..COL_MAX_POINTS_TAK] of boolean;   // Видимость на участке
+    Mov: boolean;                        // движущаяся
+  end;
+  TTaskRec_TAK=record                         // Структура задач
+    m_t: integer;           //Температура заряда  4
+    m_tv: integer;          //Температура воздуха 4
+    m_v: word;           //Скорость ветра 4
+    m_az: word;          //Азимут ветра    4
+    m_pv: word;          //Давление воздуха
+    m_ks: word;          //Износ канала ствола
+    m_inten_fog: word;      // Плотность тумана
+    Tstr: word;             // Время на стрельбу
+    Col_targ: word;         // Количество мишеней
+    Bk: TBk;                // Боекомплект
+    Temp: byte;             //Время суток      4
+    Ceson: byte;            //Время года        4
+    Mestn: byte;            //Местность          4
+    NumKvit:byte;           // Номер квитанции
+    m_fog: boolean;         // Плотность тумана
+    OriRec: TOriRec;
+    TarRec: array[1..COL_MAX_MICH_TAK] of TTarRec_TAK;   // Описание мишеней
+    m_index: word;          //Индекс задачи
+    Rez1: word;          //Индекс задачи
+    Rez2: word;          //Индекс задачи
+    Rez3: word;          //Индекс задачи
+    Rez4: word;          //Индекс задачи
+    Rez5: word;          //Индекс задачи
+    Rez6: word;          //Индекс задачи
+  end;
+  TSost_BM=record
+    T_Voda,
+    T_Maslo: integer;
+    Spidom,
+    Taxom,
+    P_Maslo_Motor,
+    P_Maslo_KP,
+    N_Pered: byte;
+    Res7,Res8,
+    Res9,Res10: byte;
+    PNV_MV, Fara_FG: boolean;            // ночной прицел, инфра фара
+    Motor: boolean;
+  end;
+  // массив для исходных значений
+  TTarRec_TAK_real=record                       // Описание мишени
+    Xtek:array[0..COL_MAX_POINTS_TAK] of real;      // Координаты опорных точек
+    Ytek:array[0..COL_MAX_POINTS_TAK] of real;
+    Htek:array[0..COL_MAX_POINTS_TAK] of real;
+    Tstop:array[0..COL_MAX_POINTS_TAK] of word;        // Время остановки в точке
+    Skor:array[0..COL_MAX_POINTS_TAK] of real;      // Cкорость движения на участках
+    Visible:array[0..COL_MAX_POINTS_TAK] of boolean;   // Видимость на участке
+    Vxtek:array[0..COL_MAX_POINTS] of real;
+    Vytek:array[0..COL_MAX_POINTS] of real;
+    Vhtek:array[0..COL_MAX_POINTS] of  real;         // Для воздушных целей
+    Time_stop:array[0..COL_MAX_POINTS] of  integer;  //Время остановки в точке
+    Time_mov:array[0..COL_MAX_POINTS] of  integer;   //Время движения до следующей точки
+    PointTek: word;
+    Htek_const:array[0..COL_MAX_POINTS_TAK] of real;
+  end;
+
+  TTargets=record
+    xtek: real;        // координаты мишеней
+    ytek: real;
+    htek: real;
+    angleRotation: real; // угол подъёма мишени
+    enableTarget: boolean;
+    otobr: boolean;       // мигание при поражении одним снарядом
+    fire: boolean;       // вспышки выстрелов
+  end;
+  Mestnik = record
+    Num               : integer;  //номер файла компиляции List
+    Patch             : integer;  //номер патча
+    X,Y,H,A           : real;  //координаты и угол поворота в единицах экрана и градусах
+    Sc                : real;  // Масштабирование
+    Az_Paden          : real;  //угол падения в градусах
+    Tg_Paden          : real;  //тангаж падения в градусах
+    Type_Objekt       : integer;  //Признак объекта 1- точка, 2-круг, 3-многоуг-к , 4-ломаная линия
+    Type_Action       : integer;  //Признак разрушения 0- нет, 1- отскок, 2-наклон, 3-разрушение
+    Col_Points_Objekt : integer;  //Количество ограничивающих точек
+   Curver            : TList;    //Список координат
+  end;
+  PMestnik = ^Mestnik;
+
+const
+  //Время суток
+  DAY=1;
+  NIGHT=2;
+  //Время года
+  SUMMER=1;
+  WINTER=2;
+
+  RAVNINA=1;                   //Местность
+  GORA=2;
+  BOLOTO=3;
+  PUSTYN=4;
+
+  DEN=1;
+  PASSIV=2;
+  AKTIV=3;
+
+  NON_DYM=1;          // Типы вспышек
+  YES_DYM=2;
+  ZAVESA_DYM=3;
+  STVOL_DYM=4;
+  PRICEL_DYM=5;
+
+  RM_RUKOVOD=0;
+  RM_NAVOD=1;
+  RM_VIEWER=4;
+
+  MASHT_RIS_100=100;
+  MASHT_RIS_10=10;
+
+
+  // Мишени
+  M6=1;
+  M7=2;
+  M8=3;
+  M8A=4;
+  M9=5;
+  M9A=6;
+  M9C=7;
+  M10=8;
+  M10A=9;
+  M11=10;
+  M12=11;
+  M12A=12;
+  M12B=13;
+  M13=14;
+  M13A=15;
+  M14=16;
+  M17=17;
+  M17A=18;
+  M17B=19;
+  M18=20;
+  M19=21;
+  M20=22;
+  M20A=23;
+  M25=24;
+
+  MODEL_T55=1;
+  MODEL_BMP1=2;
+  MODEL_BMP2=3;
+  MODEL_T80=4;
+
+
+  ISX_POL_BTR_Y_RAV=1670;    // Исходное положение БМП по Y
+  ISX_POL_BTR_Y_GOR=1770;    // Исходное положение БМП по Y
+
+  STOLB_BOTTOM_RAV=1780;      //     Расстояние от задней кромки поверхности
+  STOLB_BOTTOM_GOR=1880;      //     Расстояние от задней кромки поверхности
+
+  STOLB_SHIR=60;
+  STOLB_LEFT_RAV=1800;         // Расстояние от левого края
+  STOLB_DX1_RAV=1445;         //     Расстояние от 1 до 2 дорожки
+  STOLB_DX2_RAV=1525;         //     Расстояние от 2 до 3 дорожки
+  STOLB_LEFT_GOR=2930;         // Расстояние от левого края
+  STOLB_DX1_GOR=980;         //     Расстояние от 1 до 2 дорожки
+  STOLB_DX2_GOR=980;         //     Расстояние от 2 до 3 дорожки
+
+  STOLB_DY_R=80;         //     Расстояние от белых до красных
+  STOLB_DY_BL=6700;       //    Расстояние от красных до голубых
+  STOLB_DY_GRAN=14000;    //     Расстояние от красных до знаков сектора запрета
+  H_STOLB_GRAN=0.6;       //Высота ограничивающих столбов в оконных координатах
+
+
+
+  // Команды передаваемые по сети
+  // Команды передаваемые по сети
+  ZADACHA=1;        // Начало, конец задачи, просмотр рабочего места
+    ZAD_SIGNAL=1;
+    ZAD_BEGIN_UPR=2;
+    ZAD_END_UPR=3;
+    ZAD_ISX_POL=4;
+    ZAD_UPRAVL_RMI=5; // Управление рабочим местом
+    ZAD_UPRAVL_OTKL=6;
+    ZAD_PROSMOTR_RMI=7;
+    ZAD_PROSMOTR_OTKL=8;
+    ZAD_PROSMOTR_ORG_UPR=9;
+    ZAD_PROSMOTR_ORG_UPR_OTKL=10;
+    ZAD_ZARJAJANIE=11;
+
+    ZAD_CTRL_DALNOMER=12;
+    ZAD_CTRL_NAKACHKA=13;
+    ZAD_CTRL_TKN4=14;
+    ZAD_CTRL_TPN=15;
+    ZAD_CTRL_SPZ1_ON=16;
+    ZAD_CTRL_SPZ2_ON=17;
+    ZAD_CTRL_SPZ3_ON=18;
+    ZAD_CTRL_SPZ1_OFF=19;
+    ZAD_CTRL_SPZ2_OFF=20;
+    ZAD_CTRL_SPZ3_OFF=21;
+    ZAD_DEFAULT=22;
+    ZAD_CTRL_ISCHODNOE=30;
+  PANTOGRAF=2;
+    PANT_1=1;         // Первый пантограф
+    PANT_2=2;         // второй пантограф
+    PANT_3=3;         // третий пантограф
+    PANT_ERR=4;      //  ошибка
+    PANT_PNT=5;      //  пройдена опорная точка
+    PANT_END=6;      //  пройдена последняя точка
+
+  OPERATION=3;        // Тренировка, контроль, самообучение
+    OPER_CTRL_FUNCTION=24;
+    OPER_RASSOGL_VYVER=25;
+    OPER_SOGL_VYVER=26;
+    OPER_SAMOOB_BEGIN=31;
+    OPER_TRENIR_BEGIN=32;
+    OPER_KONTRL_BEGIN=33;
+    OPER_END=39;
+
+  PORAJ_PKT=4; // Чем и как произведено поражение,  второй байт- номер поражённой мишени
+  PORAJ_OG=5;
+  PORAJ_BT=6;
+  PORAJ_KUM=7;
+  PORAJ_PTUR=8;
+  PORAJ_RANA_BT=9;
+  PORAJ_RANA_KUM=10;
+  PORAJ_SOSED=11;
+  PORAJ_SOSED_1=12;
+  PORAJ_SOSED_2=13;
+  PORAJ_SOSED_3=14;
+  PROMAX_PUSHKA=15;
+  PROMAX_PTUR=16;
+  OSKOLOK_PUSHKA=17;
+  GABARIT_PUSHKA=18;
+  NE_PORAJ_OG=19;
+  VOZDUX_PUSHKA=11;
+
+  POWER_PK=20;
+    POWER_CLOSE=0;  // Выход из программы
+    POWER_OFF=1;    // Выключение
+    POWER_REBOOT=2; // Перезагрузка
+
+  KVITANCIA=21;     // второй байт-номер квитанции
+
+  TEST_=22;         //  Тест
+    TEST_ON=1;
+    TEST_OFF=2;
+    TEST_KALIBR_MIN=3;
+    TEST_KALIBR_MAX=4;
+    TEST_KALIBR_SAVE=5;
+
+  PORAJ_MODEL_OG=23;// Чем и как произведено поражение,  второй байт- номер поражённой мишени
+  PORAJ_MODEL_BT=24;
+  PORAJ_MODEL_KUM=25;
+  PORAJ_MODEL_PTUR=26;
+
+  STVOL_DYM_TAK=28;        // Выстрел модели
+
+  DESTROY_TANK=29;         // Выход из строя
+    DESTR_COMPL=1;           // Поражение полное
+    DESTR_NAVOD=2;           // Наводчика (дальномер,стабилизатор, привод, дельта Д)
+    DESTR_DALN=13;            // Дальномер
+    DESTR_PRIVOD=12;          // Привод
+    DESTR_PRIVOD_VER=5;      // Привод верт
+    DESTR_PRIVOD_GOR=6;      // Привод горизонт
+    DESTR_STABIL=7;          // Стабилизатор
+    DESTR_AZ=8;              // Автомат заряжания
+    DESTR_PNV=9;             // Ночное видение
+    DESTR_UPR_RAK=10;        // Канал управляемой ракеты
+
+    DESTR_VOD=20;            // База без движения
+    DESTR_DVIG=21;           // Двигатель
+    DESTR_POVOROT_LEV=22;    // Повороты
+    DESTR_POVOROT_PRAV=23;
+    DESTR_STARTER=24;        // Стартер
+    DESTR_SCEPLENIE=25;      // Сцепление
+    DESTR_PROMAX=50;      // Сцепление
+
+  SINCHRO=30;                // Проверка наличия в сети
+
+  PORAJ_RANA_SOSED=31;
+  PORAJ_RANA_SOSED_1=32;
+  PORAJ_RANA_SOSED_2=33;
+  PORAJ_RANA_SOSED_3=34;
+
+  POS_OPER=35;
+
+  ERROR_ACTION=40;          // Ошибки экипажа
+    // Командир
+    ERROR_KOM_1=1;
+    ERROR_KOM_2=2;
+    ERROR_KOM_3=3;
+    ERROR_KOM_4=4;
+    ERROR_KOM_5=5;
+    ERROR_KOM_6=6;
+
+    // Наводчик
+    ERROR_NAV_1=41;
+    ERROR_NAV_2=42;
+    ERROR_NAV_3=43;
+    ERROR_NAV_4=44;
+    ERROR_NAV_5=45;
+    ERROR_NAV_6=46;
+
+  OPER_TRENIR=41;               // номера операций в самообучении
+  OPER_TRENIR_ERROR=42;         //
+
+  ISPRAVN=43;
+
+  FUNCTION_SYSTEM=50;       // Сигналы, возникающие в процессе функционирования
+    ZARJAD=1;               // Заряжание пушки
+    SPUSK_PKT=2;            // Холостой спуск
+    VYSTR_PUSHKA=3;         // Выстрел пушки
+    VYSTR_PKT=4;            // Выстрел ПКТ
+
+  KOMANDA_CU=128;            // ЦУ от командира наводчику, второй байт- азимут
+
+  // Объём передаваемой информации
+  LVS_TEK_SOST=200;    // Текущее состояние руководителю /
+  LVS_TARGET=1200;
+  LVS_TARG_TAK=1200;
+  LVS_MODEL=720;     //*10 Сообщения о танках
+  LVS_TAKTIKA=1920;  //  LVS_MODEL=720 +  LVS_TARG_TAK=1200;
+  LVS_KOMAND=2;       // Команды
+  LVS_ISX_DAN_TAK=1936;   // Вся задача
+  LVS_ISX_DAN=480;   // Вся задача
+  LVS_TAKT_DAN=1083;//939;   // Тактическая обстановка
+  LVS_VSPY=32;        // Cообщения о взрывах
+  LVS_TEST_NAV=33;    // Органы наводчика при тестировании
+  LVS_TEST_KOM=25;    // Органы коман при тестировании
+
+  H_TARGET_GOR=2;             // высота мишени над уровнем земли
+  H_TARGET_RAV=2;
+  H_TARGET_TAK=-7;
+  LVS_ZAPROS=4;
+
+  // Размещение оборудования на полигоне в дм
+  VYCHKA_X_RAV=2200;
+  VYCHKA_Y_RAV=950;
+  VYCHKA_X_MV=8510;
+  VYCHKA_Y_MV=720;
+  VYCHKA_X_GOR=3580;
+  VYCHKA_Y_GOR=1390;
+
+    procedure SetDimensionDirectris(season,region : integer);
+    function  Num_Target(Name: string): integer;
+    function  Name_Target(Num: integer): string;
+    function Name_Target_rus(Num: integer): string;// для ведомости у руководителя
+    procedure Count_pogoda;
+    function SkorostK(v: real): real;
+    function SkorostM(v: real): real;
+    function Uskoren(a: real): real;
+    procedure Isx_Pol_GM;
+    procedure Vostan_BK;
+    function Count_dX(n: integer): integer;
+
+var
+  BMP: array [1..3] of TBMP;
+  Org_Upr_Rm: array [1..3] of TOrg_Upr_Rm;          // Органы управления рабочих мест текущие
+  Org_Upr_Rm_old: array [1..3] of TOrg_Upr_Rm;      // Органы управления рабочих мест предыдущие
+  word_out: array[0..2] of byte;
+  Num_BMP:word=2;
+  NumScene: integer;               //Номер сцены
+  Angle_Point: real;             // Угол зрения
+
+  Model: array[1..COL_MAX_OBJEKT_TAK_TEX] of TModel;/// Структура для передачи
+  dH_target:real;
+  OldRec, NewRec : TSndRec;
+  TargetR_TAK: array[1..COL_MAX_MICH_TAK]of TTarRec_TAK_real;
+  Angle_Paden: array[1..3,1..COL_MAX_MICH] of real;
+  Angle_Paden_Tak: array[1..COL_MAX_MICH_TAK] of real;
+  Poraj,Rana,Rana25,Mont_Target,DeMont_Target: array[1..3,1..COL_MAX_MICH] of boolean;
+  Poraj_TAK,Mont_Target_TAK,DeMont_Target_TAK: array[1..COL_MAX_MICH_TAK] of boolean;
+  vspy_TAK: array[1..2,1..COL_MAX_MICH_TAK] of boolean;
+  d_target_TEX: array[1..3,0..MAX_TYPE_TEX+3] of real;//Cмещение по x и h габаритов прицеливания
+  col_tch_targ: array[1..(COL_MAX_MICH_TAK+COL_MAX_OBJEKT_TAK_TEX)] of integer;   //кол-во точек для создания мишени
+  otkat: array[1..3] of  real;
+
+  Boek: array[1..3] of TBk;// Текущее количество боеприпасов
+
+  // Структуры для расчёта текущено положения мишеней
+  TargetR: array[1..COL_MAX_MICH]of TTargetR;// Стрельба
+  // Структуры для передачи
+  TaskRec: TTaskRec;         // Стрельба
+  TaskRec_TAK: TTaskRec_TAK; // Тактика
+  // Структура для сохранения исходных значений в ходе выполнения упражнения
+  Task: TTask;
+  priem_basa: boolean;
+  Povrejden: word;
+
+  Position_Oper: array[1..3,1..3] of byte; // Состяние при операциях № экипажа, член экипажа
+  Oper: array[1..100,0..3] of String;
+  otobr_RM: word;
+  dirBase: string;
+  Oper_init:boolean;
+  Time_adapter: boolean;
+  stop_prog: boolean;
+  BuffTr: Array [0..64,1..2000] of Char;
+  BuffRc: Array [1..2000] of Char;
+  KommandR: array[1..2] of byte;
+  KommandTr: array[1..2] of byte;
+  potok: array[0..64,1..6] of integer;    {Массив для постановки в очередь}
+  begO,endO: word;                           { программ для обслуживания}
+  TargetName: array[1..10] of  string;                  // Наименование мишени
+  TaskName: string;                                     // Наименование задачи
+  Begin_upr: boolean;   // начало упражнения
+  time_Upr : LongInt;  //Время задачи
+  mode_off: word;    //Режим выключения  0-закрыть программу, 1-выкл ПК, 2-Перегрузить
+  mode: integer;
+  mode_old: integer;
+  NumScene_old: integer;                 // Режим работы
+  Num_BMP_BO: word=2;
+  Box_Tank: array[1..4,1..2] of TBox_Tank;
+  H_Targ: array[1..COL_MAX_MICH_TAK] of real;  //Размеры квадрата в который необходимо попасть
+  X_Targ: array[1..COL_MAX_MICH_TAK] of real;
+  Missile_Mode_old: word;
+  Dym_V_X,Dym_V_Y,Dym_Vtek: real;
+  Missile_Start_old: boolean;
+  realRM: word;
+  TTTT:TTTask;
+   Targets: array[1..3,1..COL_MAX_MICH] of TTargets;
+   TargetsTaktika: array[1..COL_MAX_MICH_TAK] of TTargets;
+  // Пременные, описывающие размеры полигона
+  stolb_Left: real;    // Исходное положение БМП по Y
+  stolb_DX1,
+  stolb_DX2: real;
+  stolb_Bottom: real;
+  begPositionY: real;
+  Vychka_X: real;
+  Vychka_Y: real;
+  Vychka_H: real;
+    Mestniks : array  of TList;
+  Grand_Mestniks : TList;
+  TypesOfOrient : TList;
+  DinamicObj : TList;
+  Orient: TOrient;
+
+
+
+  implementation
+
+uses
+  UnBuildSetka;
+
+function Num_Target(Name: string): integer;
+begin
+  Num_Target:=M8;
+  if Name='6'then Num_Target:=M6;
+  if Name='7'then Num_Target:=M7;
+  if Name='8'then Num_Target:=M8;
+  if Name='8a'then Num_Target:=M8A;
+  if Name='9'then Num_Target:=M9;
+  if Name='9a'then Num_Target:=M9A;
+  if Name='9c'then Num_Target:=M9C;
+  if Name='10'then Num_Target:=M10;
+  if Name='10a'then Num_Target:=M10A;
+  if Name='11'then Num_Target:=M11;
+  if Name='12'then Num_Target:=M12;
+  if Name='12a'then Num_Target:=M12A;
+  if Name='12b'then Num_Target:=M12B;
+  if Name='13'then Num_Target:=M13;
+  if Name='13a'then Num_Target:=M13A;
+  if Name='14'then Num_Target:=M14;
+  if Name='17'then Num_Target:=M17;
+  if Name='17a'then Num_Target:=M17A;
+  if Name='17b'then Num_Target:=M17B;
+  if Name='18'then Num_Target:=M18;
+  if Name='19'then Num_Target:=M19;
+  if Name='20'then Num_Target:=M20;
+  if Name='20a'then Num_Target:=M20A;
+  if Name='25'then Num_Target:=M25;
+end;
+
+function Name_Target(Num: integer): string;
+begin
+  result:='8';
+  case Num of
+    M6: result:='6';
+    M7: result:='7';
+    M8: result:='8';
+    M8A: result:='8a';
+    M9: result:='9';
+    M9A: result:='9a';
+    M9C: result:='9c';
+    M10: result:='10';
+    M10A: result:='10a';
+    M11: result:='11';
+    M12: result:='12';
+    M12A: result:='12a';
+    M12B: result:='12b';
+    M13: result:='13';
+    M13A: result:='13a';
+    M14: result:='14';
+    M17: result:='17';
+    M17A: result:='17a';
+    M17B: result:='17b';
+    M18: result:='18';
+    M19: result:='19';
+    M20: result:='20';
+    M20A: result:='20a';
+    M25: result:='25';
+  end;
+end;
+
+function Name_Target_rus(Num: integer): string;
+begin
+  result:='8';
+  case Num of
+    M6: result:='6';
+    M7: result:='7';
+    M8: result:='8';
+    M8A: result:='8a';
+    M9: result:='9';
+    M9A: result:='9а';
+    M9C: result:='9в';
+    M10: result:='10';
+    M10A: result:='10a';
+    M11: result:='11';
+    M12: result:='12';
+    M12A: result:='12a';
+    M12B: result:='12б';
+    M13: result:='13';
+    M13A: result:='13a';
+    M14: result:='14';
+    M17: result:='17';
+    M17A: result:='17a';
+    M17B: result:='17б';
+    M18: result:='18';
+    M19: result:='19';
+    M20: result:='20';
+    M20A: result:='20a';
+    M25: result:='25';
+  end;
+end;
+
+
+
+procedure Count_pogoda;
+var  vx,vy: real;
+begin
+  vx:=-SkorostM(Task.m_v)*sin(Task.m_az/57.3);
+  vy:=SkorostM(Task.m_v)*cos(Task.m_az/57.3);
+  Dym_V_X:=vx;
+  Dym_V_Y:=vy;
+  Dym_Vtek:=sqrt(Dym_V_Y*Dym_V_Y+Dym_V_X*Dym_V_X);
+end;
+
+{****************Расчёты****************}
+
+function SkorostK(v: real): real;
+begin
+  result:=v*10/3.6/TIK_SEK/MASHT_RIS;             // v/Перевод в дм/c /TIK_SEK/ Масштаб
+end;
+
+function SkorostM(v: real): real;
+begin
+  result:=v*10/TIK_SEK/MASHT_RIS;             // v* Перевод в дм/c /TIK_SEK/ Масштаб
+end;
+
+function Uskoren(a: real): real;
+begin
+  result:=a*10/TIK_SEK/TIK_SEK/MASHT_RIS;             // a * Перевод в дм/c/ TIK_SEK/Масштаб
+end;
+
+procedure Isx_Pol_GM;
+var a, c: word;
+begin
+  for a:=1 to 3 do begin
+    BMP[a].UmBase:=0;
+    BMP[a].AzBase:=0;
+    BMP[a].Tangage:=0;
+    if Task.m_index<6000 then begin //Стрельба
+      BMP[a].AzBase:=0;
+      BMP[a].Ytek:=begPositionY/MASHT_RIS_100;  //
+      case a of
+        1: BMP[a].Xtek:=0;//(Stolb_left-BTR_SHIRINA_05)/MASHT_RIS_100;
+        2: BMP[a].Xtek:=(stolb_Left+stolb_dX1)/MASHT_RIS_100;
+        3: BMP[a].Xtek:=0;//(Stolb_left+stolb_dX1+stolb_dX2)/MASHT_RIS_100;
+      end;
+      if Task.m_index=5005 then begin
+        if Task.mestn=GORA then BMP[2].Ytek:=81.5 else BMP[2].Ytek:=40;//110
+        BMP[2].AzBase:=180;
+      end;
+    end;
+    if a=2 then BMP[a].Htek:=CountHeight(BMP[a].Xtek,BMP[a].Ytek)
+           else BMP[a].Htek:=-10;
+  end;
+end;
+
+procedure Vostan_BK;
+var a,b,c: word;
+begin
+  Boek[Num_BMP].Col_Upr:=Task.Bk.Col_Upr;
+  BMP[Num_BMP].Col_Upr:=Boek[Num_BMP].Col_Upr;
+end;
+
+procedure SetDimensionDirectris(season,region : integer);
+begin
+  if (region=GORA) or (season=WINTER) then begin
+    begPositionY:=ISX_POL_BTR_Y_GOR;// Исходное положение БМП по Y
+    stolb_Bottom:=STOLB_BOTTOM_GOR; // Расстояние от задней кромки поверхности
+    stolb_Left:=STOLB_LEFT_GOR;
+    stolb_DX1:=STOLB_DX1_GOR;
+    stolb_DX2:=STOLB_DX2_GOR;
+  end
+  else begin
+    begPositionY:=ISX_POL_BTR_Y_RAV;    // Исходное положение БМП по Y
+    stolb_Bottom:=STOLB_BOTTOM_RAV;      //     Расстояние от задней кромки поверхности
+    stolb_Left:=STOLB_LEFT_RAV;
+    stolb_DX1:=STOLB_DX1_RAV;
+    stolb_DX2:=STOLB_DX2_RAV;
+  end;
+end;
+
+function Count_dX(n: integer): integer;
+begin
+  result:=0;
+  case n of
+    1: result:=-round(stolb_dX1/ DDD);
+    2: result:=0;
+    3: result:=round(stolb_dX2/ DDD);
+  end;
+end;
+
+end.
+
+
+
+
+

@@ -1,0 +1,941 @@
+unit UnTask;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Dialogs,
+    ExtCtrls, StdCtrls, ComCtrls, UnGeom, UnOther, UnBuildSetka,
+    main, UnBuildKoordObject, UnModel, UnEdit;
+
+type
+  // Стрельба
+  TTargetR=record                       // Описание мишени
+    Xtek:array[1..3,0..COL_MAX_POINTS] of real;      // Координаты опорных точек
+    Ytek:array[1..3,0..COL_MAX_POINTS] of real;
+    Htek:array[1..3,0..COL_MAX_POINTS] of real;      //
+    Htek_const:array[1..3,0..COL_MAX_POINTS] of real;      //
+    Skor:array[0..COL_MAX_POINTS] of real;       // Cкорость движения на участках
+    Vxtek:array[0..COL_MAX_POINTS] of real;
+    Vytek:array[0..COL_MAX_POINTS] of real;
+    Vhtek:array[0..COL_MAX_POINTS] of  real;      // Для воздушных целей
+    Time_stop:array[0..COL_MAX_POINTS] of  integer;   //Время остановки в точке
+    Time_mov:array[0..COL_MAX_POINTS] of  integer;   //Время движения до следующей точки
+    PointTek: word;
+  end;
+    ///Структура для ориентиров, упакованных для передачи
+  TOriRec=record
+    Col_orient: byte;
+    Typ_orient:array[1..MAX_COL_ORIENT] of byte;
+    Xorient:array[1..MAX_COL_ORIENT] of word;      // Координаты опорных точек
+    Yorient:array[1..MAX_COL_ORIENT] of word;
+  end;
+
+  TTaskRec_TAK=record                         // Структура задач
+    m_t: integer;           //Температура заряда  4
+    m_tv: integer;          //Температура воздуха 4
+    m_v: word;           //Скорость ветра 4
+    m_az: word;          //Азимут ветра    4
+    m_pv: word;          //Давление воздуха
+    m_ks: word;          //Износ канала ствола
+    m_inten_fog: word;      // Плотность тумана
+    Tstr: word;             // Время на стрельбу
+    Col_targ: word;         // Количество мишеней
+    Bk: TBk;                // Боекомплект
+    Temp: byte;             //Время суток      4
+    Ceson: byte;            //Время года        4
+    Mestn: byte;            //Местность          4
+    NumKvit:byte;           // Номер квитанции
+    m_fog: boolean;         // Плотность тумана
+    OriRec: TOriRec;
+    TarRec: array[1..COL_MAX_MICH_TAK] of TTarRec_TAK;   // Описание мишеней
+    m_index: word;          //Индекс задачи
+    Rez1: word;          //Индекс задачи
+    Rez2: word;          //Индекс задачи
+    Rez3: word;          //Индекс задачи
+    Rez4: word;          //Индекс задачи
+    Rez5: word;          //Индекс задачи
+    Rez6: word;          //Индекс задачи
+  end;
+    // Тактика
+  TTargetR_TAK=record                       // Описание мишени
+    Xtek:array[0..COL_MAX_POINTS_TAK] of real;      // Координаты опорных точек
+    Ytek:array[0..COL_MAX_POINTS_TAK] of real;
+    Htek:array[0..COL_MAX_POINTS_TAK] of real;
+    Tstop:array[0..COL_MAX_POINTS_TAK] of word;        // Время остановки в точке
+    Skor:array[0..COL_MAX_POINTS_TAK] of real;      // Cкорость движения на участках
+    Visible:array[0..COL_MAX_POINTS_TAK] of boolean;   // Видимость на участке
+    Vxtek:array[0..COL_MAX_POINTS] of real;
+    Vytek:array[0..COL_MAX_POINTS] of real;
+    Vhtek:array[0..COL_MAX_POINTS] of  real;         // Для воздушных целей
+    Time_stop:array[0..COL_MAX_POINTS] of  integer;  //Время остановки в точке
+    Time_mov:array[0..COL_MAX_POINTS] of  integer;   //Время движения до следующей точки
+    PointTek: word;
+    Htek_const:array[0..COL_MAX_POINTS_TAK] of real;
+  end;
+  // массив для исходных значений
+  TTarRec_TAK_real=record                       // Описание мишени
+    Xtek:array[0..COL_MAX_POINTS_TAK] of real;      // Координаты опорных точек
+    Ytek:array[0..COL_MAX_POINTS_TAK] of real;
+    Htek:array[0..COL_MAX_POINTS_TAK] of real;
+    Tstop:array[0..COL_MAX_POINTS_TAK] of word;        // Время остановки в точке
+    Skor:array[0..COL_MAX_POINTS_TAK] of real;      // Cкорость движения на участках
+    Visible:array[0..COL_MAX_POINTS_TAK] of boolean;   // Видимость на участке
+    Vxtek:array[0..COL_MAX_POINTS] of real;
+    Vytek:array[0..COL_MAX_POINTS] of real;
+    Vhtek:array[0..COL_MAX_POINTS] of  real;         // Для воздушных целей
+    Time_stop:array[0..COL_MAX_POINTS] of  integer;  //Время остановки в точке
+    Time_mov:array[0..COL_MAX_POINTS] of  integer;   //Время движения до следующей точки
+    PointTek: word;
+    Htek_const:array[0..COL_MAX_POINTS_TAK] of real;
+  end;
+
+    procedure Isx_Pol_Target;
+    procedure Move_Michen_Sek;
+    procedure Move_Michen_Tik;
+    function Count_dX(n: integer): integer;
+    procedure Count_Target;
+    procedure LoadTarget(Num,Np: integer);
+    procedure Load_Task(stan: boolean);
+    procedure Save_Task;
+
+var
+  // Структуры для расчёта текущено положения мишеней
+  TargetR: array[1..COL_MAX_MICH]of TTargetR;// Стрельба
+  TaskRec_TAK:  TTaskRec_TAK;// Стрельба
+  Poraj_TAK,Mont_Target_TAK,DeMont_Target_TAK: array[1..COL_MAX_MICH_TAK] of boolean;
+  TargetR_TAK: array[1..COL_MAX_MICH_TAK]of TTarRec_TAK_real;
+  dH_target:real;
+   Angle_Paden: array[1..3,1..COL_MAX_MICH] of real;
+   Angle_Paden_Tak: array[1..COL_MAX_MICH_TAK] of real;
+
+
+implementation
+
+procedure Isx_Pol_Target;
+var
+  a: word;
+  b: word;
+begin
+  for a:=1 to COL_EKIP do begin
+    for b:=1 to COL_MAX_MICH do begin
+      targets[a,b].enableTarget:=false;
+      targets[a,b].otobr:=false;
+      targets[a,b].fire:=false;       // вспышки выстрелов
+    end;
+  end;
+  for a:=1 to TaskRec_TAK.Col_targ do begin
+    targetsTaktika[a].enableTarget:=false;
+    targetsTaktika[a].otobr:=true;
+    targetsTaktika[a].fire:=false;       // вспышки выстрелов
+  end;
+end;
+
+procedure Move_Michen_Sek;
+var a,b,c:word;
+begin
+    // Движение мишеней
+    if Task.m_index <5000 then begin
+      for a:=1 to Task.Col_targ do begin
+        if (Task.Target[1][a].Mov) and (time_Upr>Task.Target[1][a].Tst) then begin
+          if TargetR[a].Time_mov[TargetR[a].PointTek]>0 then begin
+            dec(TargetR[a].Time_mov[TargetR[a].PointTek]);
+            TargetR[a].Vxtek[0]:=TargetR[a].Vxtek[TargetR[a].PointTek];
+            TargetR[a].Vytek[0]:=TargetR[a].Vytek[TargetR[a].PointTek];
+            TargetR[a].Vhtek[0]:=TargetR[a].Vhtek[TargetR[a].PointTek];
+          end
+          else begin
+            if TargetR[a].Time_stop[TargetR[a].PointTek]>0 then begin
+              dec(TargetR[a].Time_stop[TargetR[a].PointTek]);
+              TargetR[a].Vxtek[0]:=0;
+              TargetR[a].Vytek[0]:=0;
+              TargetR[a].Vhtek[0]:=0;
+            end
+            else begin
+              if TargetR[a].PointTek<Task.Target[1][a].ColPoints then inc(TargetR[a].PointTek);
+            end;
+          end;
+        end;
+        //Подъём мишеней
+        //Подошло время подъёма
+        if (time_Upr>Task.Target[1][a].Tst) and (time_Upr<Task.Target[1][a].Tend)
+                 and (Task.Target[1][a].Visible[TargetR[a].PointTek]) then begin
+          //если мишень не поднята и не поражена, то поднять
+          for c:=1 to 3 do begin
+            if(Angle_Paden[c,a]<360)and not Poraj[c,a]then begin
+              Mont_Target[c,a]:=true;
+            end;
+          end;
+        end;
+        //   Если время вышло и мишень ещё не лежит, то опустить
+        if (time_Upr>Task.Target[1][a].Tend)or(not Task.Target[1][a].Visible[TargetR[a].PointTek]) then begin
+          for c:=1 to 3 do begin
+            if Angle_Paden[c,a]>ANGL_PADEN then DeMont_Target[c,a]:=true;
+          end;
+        end;
+      end;
+{      for b:=1 to 3 do for a:=1 to Task.Col_targ do begin
+        inc(vspy_time[b,a]);
+        if (not vspy[1,b,a])and(vspy_time[b,a]>3) then begin
+          vspy_time[b,a]:=0;
+          vspy[1,b,a]:=true;
+        end
+        else if vspy[1,b,a] and(vspy_time[b,a]>2)then begin
+          vspy_time[b,a]:=0;
+          vspy[1,b,a]:=false;
+        end;
+      end;}
+    end
+    else begin
+      for a:=1 to TaskRec_TAK.Col_targ do begin
+        if (TaskRec_TAK.TarRec[a].Mov) and (time_Upr>TaskRec_TAK.TarRec[a].Tst) then begin
+          if TargetR_TAK[a].Time_mov[TargetR_TAK[a].PointTek]>0 then begin
+            dec(TargetR_TAK[a].Time_mov[TargetR_TAK[a].PointTek]);
+            TargetR_TAK[a].Vxtek[0]:=TargetR_TAK[a].Vxtek[TargetR_TAK[a].PointTek];
+            TargetR_TAK[a].Vytek[0]:=TargetR_TAK[a].Vytek[TargetR_TAK[a].PointTek];
+            TargetR_TAK[a].Vhtek[0]:=TargetR_TAK[a].Vhtek[TargetR_TAK[a].PointTek];
+          end
+          else begin
+            if TargetR_TAK[a].Time_stop[TargetR_TAK[a].PointTek]>0 then begin
+              dec(TargetR_TAK[a].Time_stop[TargetR_TAK[a].PointTek]);
+              TargetR_TAK[a].Vxtek[0]:=0;
+              TargetR_TAK[a].Vytek[0]:=0;
+              TargetR_TAK[a].Vhtek[0]:=0;
+            end
+            else begin
+              if TargetR_TAK[a].PointTek<TaskRec_TAK.TarRec[a].ColPoints then inc(TargetR_TAK[a].PointTek);
+            end;
+          end;
+        end;
+        //Подъём мишеней
+        //Подошло время подъёма
+        if (time_Upr>TaskRec_TAK.TarRec[a].Tst) and (time_Upr<TaskRec_TAK.TarRec[a].Tend)
+                         and (TaskRec_TAK.TarRec[a].Visible[TargetR_TAK[a].PointTek]) then begin
+          //если мишень не поднята и не поражена, то поднять
+          if(Angle_Paden_TAK[a]<360)and not Poraj_TAK[a]then begin
+            Mont_Target_TAK[a]:=true;
+          end;
+        end;
+        // Если время вышло и мишень ещё не лежит, то опустить
+        if (time_Upr>TaskRec_TAK.TarRec[a].Tend)or(not TaskRec_TAK.TarRec[a].Visible[TargetR_TAK[a].PointTek]) then
+                                  if Angle_Paden_TAK[a]>ANGL_PADEN then DeMont_Target_TAK[a]:=true;
+      end;
+    end;
+    if (Time_Upr>Task.Tstr)and(Time_Upr<=Task.Tstr+2) then begin
+      // Опускаем все мишени
+      for a:=1 to Task.Col_targ do for c:=1 to 3 do  DeMont_Target[c,a]:=true;
+      for a:=1 to TaskRec_TAK.Col_targ do DeMont_Target_TAK[a]:=true;
+    end;
+end;
+
+procedure Move_Michen_Tik;
+var a,b,n:word;
+begin
+  // Мишени
+  if not Begin_upr then exit;
+  if Task.m_index <5000 then begin
+    for n:=1 to 3 do begin
+      for a:=1 to Task.Col_targ do begin
+        if Task.Target[N][a].Mov and (time_Upr>Task.Target[N][a].Tst)then begin// Движение мишений
+          TargetR[a].Xtek[N][0]:=TargetR[a].Xtek[N][0]+TargetR[a].Vxtek[0];
+          TargetR[a].Ytek[N][0]:=TargetR[a].Ytek[N][0]+TargetR[a].Vytek[0];
+          TargetR[a].Htek[n][0]:=TargetR[a].Htek_const[n][TargetR[a].PointTek]+
+                 CountHeight(TargetR[a].Xtek[n][0],TargetR[a].Ytek[n][0]);
+        end;
+        //Опускание и подъём мишеней
+        if Mont_Target[N,a] and (Angle_Paden[N,a]<360)
+                            then  Angle_Paden[N,a]:=Angle_Paden[N,a]+5
+                            else Mont_Target[N,a]:=false;
+        if DeMont_Target[N,a] and (Angle_Paden[N,a]>ANGL_PADEN)
+                             then  Angle_Paden[N,a]:=Angle_Paden[N,a]-5
+                             else DeMont_Target[N,a]:=false;
+      end;
+    end;
+//    for a:=1 to 3 do begin
+    begin
+     a:=2;
+      for b:=1 to COL_MAX_MICH do begin
+        targets[a,b].xTek:=TargetR[b].Xtek[a][0];
+        targets[a,b].yTek:=TargetR[b].Ytek[a][0];
+        targets[a,b].hTek:=TargetR[b].Htek[a][0];
+        targets[a,b].angleRotation:=Angle_Paden[a,b]; // угол подъёма мишени
+        if targets[a,b].angleRotation>271 then targets[a,b].enableTarget:=true
+                                          else targets[a,b].enableTarget:=false;
+        targets[a,b].otobr:=true;       // мигание при поражении одним снарядом
+        targets[a,b].fire:=false;       // вспышки выстрелов
+      end;
+    end;
+  end
+  else begin
+    for a:=1 to TaskRec_TAK.Col_targ do begin
+      if TaskRec_TAK.TarRec[a].Mov and
+          (time_Upr > TaskRec_TAK.TarRec[a].Tst) then begin// Движение мишений
+        TargetR_TAK[a].Xtek[0]:=TargetR_TAK[a].Xtek[0]+TargetR_TAK[a].Vxtek[0];
+        TargetR_TAK[a].Ytek[0]:=TargetR_TAK[a].Ytek[0]+TargetR_TAK[a].Vytek[0];
+        TargetR_TAK[a].Htek[0]:=TargetR_TAK[a].Htek_const[TargetR_TAK[a].PointTek]+
+               CountHeight(TargetR_TAK[a].Xtek[0],TargetR_TAK[a].Ytek[0]);
+      end;
+      //Опускание и подъём мишеней
+      if Mont_Target_TAK[a] and (Angle_Paden_TAK[a] < 360)
+                          then  Angle_Paden_TAK[a]:=Angle_Paden_TAK[a]+5
+                          else Mont_Target_TAK[a]:=false;
+      if DeMont_Target_TAK[a] and (Angle_Paden_TAK[a] > ANGL_PADEN)
+                          then  Angle_Paden_TAK[a]:=Angle_Paden_TAK[a]-5
+                          else DeMont_Target_TAK[a]:=false;
+    end;
+    for a:=1 to TaskRec_TAK.Col_targ do begin
+      targetsTaktika[a].xTek:=TargetR_TAK[a].Xtek[0];
+      targetsTaktika[a].yTek:=TargetR_TAK[a].Ytek[0];
+      targetsTaktika[a].hTek:=TargetR_TAK[a].Htek[0];
+      targetsTaktika[a].angleRotation:=Angle_Paden_TAK[a]; // угол подъёма мишени
+      if targetsTaktika[a].angleRotation>271 then targetsTaktika[a].enableTarget:=true
+                                             else targetsTaktika[a].enableTarget:=false;
+      targetsTaktika[a].otobr:=true;       // мигание при поражении одним снарядом
+      targetsTaktika[a].fire:=false;       // вспышки выстрелов
+    end;
+  end;
+end;
+
+function Count_dX(n: integer): integer;
+begin
+  case n of
+    1: result:=round(stolbLeft / DDD);
+    2: result:=round((stolbDX1+stolbLeft) / DDD);
+    3: result:=round((stolbDX1+stolbDX2+stolbLeft)/ DDD);
+    else result:=round((stolbDX1+stolbLeft) / DDD);
+  end
+end;
+
+(****Пересчёт задачи****)
+procedure Count_Target;
+var a,b,n: integer;
+Tm,dal: real;
+temp,dr,tr,xr,yr,vr: real;
+begin
+  if Task.mestn=GORA then dH_target:=H_TARGET_GOR
+                     else dH_target:=H_TARGET_RAV;// высота мишени над уровнем земли
+  for a:=1 to 3 do  for b:=1 to 5 do begin
+    Koord_poraj_X[a][b]:=7;  // Координаты рисования контуров поражённых мишеней
+    Koord_poraj_Y[a][b]:=16*b;
+  end;
+  if Task.m_index <5000 then begin
+    for a:=1 to Task.Col_targ do begin
+      Task.typeTarget[a]:=Task.Target[1][a].Num;
+      Task.Color_Mask[a]:=Task.Target[1][a].Color_Mask;
+      LoadTarget(Task.Target[1][a].Num,a);
+      for b:=1 to 3 do begin
+        Poraj[b,a]:=false;
+        Mont_Target[b,a]:=false;
+        DeMont_Target[b,a]:=false;
+        Angle_Paden[b,a]:=ANGL_PADEN;
+      end;
+      TargetR[a].PointTek:=0;
+      for n:=1 to 3 do begin
+        for b:=0 to Task.Target[n][a].ColPoints do begin
+          TargetR[a].Xtek[n][b]:=Task.Target[n][a].Xtek[b]+Count_dX(n);
+          TargetR[a].Ytek[n][b]:=Task.Target[n][a].Ytek[b]+(stolbBottom+STOLB_DY_R)/DDD;
+          TargetR[a].Htek[n][b]:=Task.Target[n][a].Htek[b];
+          TargetR[a].Xtek[n][b]:=TargetR[a].Xtek[n][b]*DDD/MASHT_RIS;
+          TargetR[a].Ytek[n][b]:=TargetR[a].Ytek[n][b]*DDD/MASHT_RIS;
+          TargetR[a].Htek_const[n][b]:=TargetR[a].Htek[n][b]*DDD/MASHT_RIS+dH_target/MASHT_RIS;
+          TargetR[a].Htek[n][b]:=TargetR[a].Htek_const[n][b]+
+                     CountHeight(TargetR[a].Xtek[n][b],TargetR[a].Ytek[n][b]);
+          TargetR[a].Time_stop[b]:=Task.Target[n][a].Tstop[b];
+          if b=0 then Task.Target[N][a].Tend:=Task.Target[N][a].Tst+Task.Target[N][a].Tstop[0]
+          else begin
+            dal:=sqrt(sqr(TargetR[a].Xtek[n][b]-TargetR[a].Xtek[n][b-1])+  //Расстояние между точками
+                      sqr(TargetR[a].Ytek[n][b]-TargetR[a].Ytek[n][b-1]));
+            TargetR[a].Skor[b]:=SkorostK(Task.Target[n][a].Skor[b]);
+            if   TargetR[a].Skor[b]=0 then TargetR[a].Skor[b]:=0.000001;
+            Tm:=dal/TargetR[a].Skor[b];      //Тики
+            TargetR[a].Time_mov[b]:=round(Tm/TIK_SEK);
+            if Tm=0 then Tm:=0.01;
+            TargetR[a].Vxtek[b]:=(TargetR[a].Xtek[n][b]-TargetR[a].Xtek[n][b-1])/Tm;
+            TargetR[a].Vytek[b]:=(TargetR[a].Ytek[n][b]-TargetR[a].Ytek[n][b-1])/Tm;
+            TargetR[a].Vhtek[b]:=(TargetR[a].Htek[n][b]-TargetR[a].Htek[n][b-1])/Tm;
+            xr:=Task.Target[N][a].Xtek[b]-Task.Target[N][a].Xtek[b-1];
+            yr:=Task.Target[N][a].Ytek[b]-Task.Target[N][a].Ytek[b-1];
+            dr:=sqrt(xr*xr+yr*yr);       // Расстояние от точки до точки
+            vr:=Task.Target[N][a].Skor[b];
+            vr:=vr*10/36;                //Перевод км/час в м/с
+            tr:=dr/vr;                   // Время на участке
+            // Время прихода в точку
+            Task.Target[N][a].Tend:=Task.Target[N][a].Tend+round(tr);
+            Task.Target[N][a].Tend:=Task.Target[N][a].Tend+Task.Target[N][a].Tstop[b];
+          end;
+          TargetR[a].Vxtek[0]:=TargetR[a].Vxtek[1];
+          TargetR[a].Vytek[0]:=TargetR[a].Vytek[1];
+          TargetR[a].Vhtek[0]:=TargetR[a].Vhtek[1];
+        end;
+      end;
+    end;
+  end
+  else begin
+    for a:=1 to TaskRec_TAK.Col_targ do begin
+      LoadTarget(TaskRec_TAK.TarRec[a].Num,a);
+      Angle_Paden_TAK[a]:=ANGL_PADEN;
+      Poraj_TAK[a]:=false;
+      Mont_Target_TAK[a]:=false;
+      DeMont_Target_TAK[a]:=false;
+      TargetR_TAK[a].PointTek:=0;
+      for b:=0 to TaskRec_TAK.TarRec[a].ColPoints do begin
+        TargetR_TAK[a].Xtek[b]:=TaskRec_TAK.TarRec[a].Xtek[b];
+        TargetR_TAK[a].Ytek[b]:=TaskRec_TAK.TarRec[a].Ytek[b]+(stolbBottom+STOLB_DY_R)/DDD;
+        TargetR_TAK[a].Htek[b]:=TaskRec_TAK.TarRec[a].Htek[b];
+        TargetR_TAK[a].Xtek[b]:=TargetR_TAK[a].Xtek[b]*DDD/MASHT_RIS;
+        TargetR_TAK[a].Ytek[b]:=TargetR_TAK[a].Ytek[b]*DDD/MASHT_RIS;
+        TargetR_TAK[a].Htek_const[b]:=TargetR_TAK[a].Htek[b]*DDD/MASHT_RIS+dH_target/MASHT_RIS;
+        TargetR_TAK[a].Htek[b]:=TargetR_TAK[a].Htek_const[b]+
+                   CountHeight(TargetR_TAK[a].Xtek[b],TargetR_TAK[a].Ytek[b]);
+        TargetR_TAK[a].Time_stop[b]:=TaskRec_TAK.TarRec[a].Tstop[b];
+        if b=0 then TaskRec_TAK.TarRec[a].Tend:=TaskRec_TAK.TarRec[a].Tst+TaskRec_TAK.TarRec[a].Tstop[0]
+        else begin
+          dal:=sqrt(sqr(TargetR_TAK[a].Xtek[b]-TargetR_TAK[a].Xtek[b-1])+  //Расстояние между точками
+                    sqr(TargetR_TAK[a].Ytek[b]-TargetR_TAK[a].Ytek[b-1]));
+          TargetR_TAK[a].Skor[b]:=SkorostK(TaskRec_TAK.TarRec[a].Skor[b]);
+          if   TargetR_TAK[a].Skor[b]=0 then TargetR_TAK[a].Skor[b]:=0.000001;
+          Tm:=dal/TargetR_TAK[a].Skor[b];      //Тики
+          TargetR_TAK[a].Time_mov[b]:=round(Tm/TIK_SEK);
+          if Tm=0 then Tm:=0.01;
+          TargetR_TAK[a].Vxtek[b]:=(TargetR_TAK[a].Xtek[b]-TargetR_TAK[a].Xtek[b-1])/Tm;
+          TargetR_TAK[a].Vytek[b]:=(TargetR_TAK[a].Ytek[b]-TargetR_TAK[a].Ytek[b-1])/Tm;
+          TargetR_TAK[a].Vhtek[b]:=(TargetR_TAK[a].Htek[b]-TargetR_TAK[a].Htek[b-1])/Tm;
+          xr:=TaskRec_TAK.TarRec[a].Xtek[b]-TaskRec_TAK.TarRec[a].Xtek[b-1];
+          yr:=TaskRec_TAK.TarRec[a].Ytek[b]-TaskRec_TAK.TarRec[a].Ytek[b-1];
+          dr:=sqrt(xr*xr+yr*yr);       // Расстояние от точки до точки
+          vr:=TaskRec_TAK.TarRec[a].Skor[b];
+          vr:=vr*10/36;                //Перевод км/час в м/с
+          tr:=dr/vr;                   // Время на участке
+          // Время прихода в точку
+          TaskRec_TAK.TarRec[a].Tend:=TaskRec_TAK.TarRec[a].Tend+round(tr);
+          TaskRec_TAK.TarRec[a].Tend:=TaskRec_TAK.TarRec[a].Tend+TaskRec_TAK.TarRec[a].Tstop[b];
+        end;
+        TargetR_TAK[a].Vxtek[0]:=TargetR_TAK[a].Vxtek[1];
+        TargetR_TAK[a].Vytek[0]:=TargetR_TAK[a].Vytek[1];
+        TargetR_TAK[a].Vhtek[0]:=TargetR_TAK[a].Vhtek[1];
+      end;
+    end;
+    for a:=1  to Col_Model do begin
+      LoadTarget(Target_Model_Isx[a].Num,COL_MAX_MICH_TAK+a);
+      case Target_Model_Isx[a].Num  of/// Положение по высоте корпуса объекта
+        MODEL_BMP1: dH_target:=POL_BMP_H+0.037;
+        MODEL_T72: dH_target:=0.1;
+        MODEL_T55: dH_target:=POL_BMP_H-0.022;
+        MODEL_BMP2: dH_target:=POL_BMP_H-0.048;
+        MODEL_M113: dH_target:=0.1;
+        else dH_target:=POL_BMP_H;
+      end;
+      Poraj_TAK_TEX[a]:=0;
+      Target_Model_Tek[a].PointTek:=0; // Обнуление текущей точки
+      /// Количество опорных точек
+      Target_Model_Tek[a].ColPoints:=Target_Model_Isx[a].ColPoints;
+      for b:=0 to Target_Model_Isx[a].ColPoints do begin
+        Target_Model_Tek[a].Xtek[b]:=Target_Model_Isx[a].Xtek[b];
+        Target_Model_Tek[a].Ytek[b]:=Target_Model_Isx[a].Ytek[b]+(stolbBottom+STOLB_DY_R)/DDD;
+        Target_Model_Tek[a].Htek[b]:=Target_Model_Isx[a].Htek[b];
+        Target_Model_Tek[a].Xtek[b]:=Target_Model_Tek[a].Xtek[b]*DDD/MASHT_RIS;
+        Target_Model_Tek[a].Ytek[b]:=Target_Model_Tek[a].Ytek[b]*DDD/MASHT_RIS;
+        Target_Model_Tek[a].Htek[b]:=Target_Model_Tek[a].Htek[b]*DDD/MASHT_RIS;
+        Target_Model_Tek[a].Htek_const[b]:=Target_Model_Tek[a].Htek[b]+dH_target;
+        Target_Model_Tek[a].Htek[b]:=Target_Model_Tek[a].Htek_const[b]+
+             CountHeight(Target_Model_Tek[a].Xtek[b],Target_Model_Tek[a].Ytek[b]);
+        Target_Model_Tek[a].Time_stop[b]:=Target_Model_Isx[a].Tstop[b];
+        if b=0 then begin
+          Target_Model_Tek[a].Tend:=Target_Model_Isx[a].Tst+Target_Model_Isx[a].Tstop[0];
+          Target_Model_Tek[a].AzBase[1]:=180;
+        end
+        else begin
+          dal:=sqrt(sqr(Target_Model_Tek[a].Xtek[b]-Target_Model_Tek[a].Xtek[b-1])+  //Расстояние между точками
+                     sqr(Target_Model_Tek[a].Ytek[b]-Target_Model_Tek[a].Ytek[b-1]));
+          Target_Model_tek[a].Skor[b]:=SkorostK(Target_Model_Isx[a].Skor[b]);
+          if Target_Model_Tek[a].Skor[b]=0 then Target_Model_Tek[a].Skor[b]:=0.000001;
+          Tm:=dal/Target_Model_Tek[a].Skor[b]; //Тики Время движения от предыдущей точки к последующей
+//          Target_Model_Tek[a].Time_mov[b]:=round(Tm/TIK_SEK);
+          Target_Model_Tek[a].Complited[b]:=false;
+          if Tm=0 then Tm:=0.01;
+          // Составляющие скорости
+          Target_Model_Tek[a].Vxtek[b]:=(Target_Model_Tek[a].Xtek[b]-Target_Model_Tek[a].Xtek[b-1])/Tm;
+          Target_Model_Tek[a].Vytek[b]:=(Target_Model_Tek[a].Ytek[b]-Target_Model_Tek[a].Ytek[b-1])/Tm;
+          Target_Model_Tek[a].Vhtek[b]:=(Target_Model_Tek[a].Htek[b]-Target_Model_Tek[a].Htek[b-1])/Tm;
+          if Target_Model_Tek[a].Vytek[b]=0 then Target_Model_Tek[a].Vytek[b]:=0.00001;
+          xr:=Target_Model_Tek[a].Xtek[b]-Target_Model_Tek[a].Xtek[b-1];
+          yr:=Target_Model_Tek[a].Ytek[b]-Target_Model_Tek[a].Ytek[b-1];
+          dr:=sqrt(xr*xr+yr*yr);       // Расстояние от точки до точки
+          vr:=Target_Model_Isx[a].Skor[b];
+          vr:=vr*10/36;                //Перевод км/час в м/с
+          tr:=dr/vr;                   // Время на участке}
+          // Время демонстрации мишени
+          Target_Model_Isx[a].Tend:=Target_Model_Isx[a].Tend+Target_Model_Isx[a].Tstop[b]+round(tr);
+          /// Азимут направления движения
+          Target_Model_tek[a].AzBase[b]:=
+              ArcTan(Target_Model_Tek[a].Vxtek[b]/Target_Model_Tek[a].Vytek[b])*57.3;
+              if Target_Model_Tek[a].Vytek[b]<0 then Target_Model_tek[a].AzBase[b]:=Target_Model_tek[a].AzBase[b]+180
+                else if Target_Model_Tek[a].Vxtek[b]<0 then Target_Model_tek[a].AzBase[b]:=Target_Model_tek[a].AzBase[b]+360;
+        end;
+        Target_Model_Tek[a].Vxtek[0]:=Target_Model_Tek[a].Vxtek[1];
+        Target_Model_Tek[a].Vytek[0]:=Target_Model_Tek[a].Vytek[1];
+        Target_Model_Tek[a].Vhtek[0]:=Target_Model_Tek[a].Vhtek[1];
+        Target_Model_Tek[a].AzBase[0]:=Target_Model_Tek[a].AzBase[1];
+        Model[a].Xtek:=Target_Model_Tek[a].Xtek[0];
+        Model[a].Ytek:=Target_Model_Tek[a].Ytek[0];
+        Model[a].Htek:=Target_Model_Tek[a].Htek[0];
+        Model[a].AzBase:=Target_Model_Tek[a].AzBase[0];
+        Target_Model_Tek[a].Delta:=0.5;
+      end;
+    end;
+  end;
+end;
+
+(*********Загрузка рисунка мишени*********)
+procedure LoadTarget(Num,Np: integer);
+var  F: TextFile;
+     S: String;
+     a: integer;
+begin
+  S:=dirBase+'res\Target\Targ_'+Name_Target(Num)+'.txt';
+  if not FileExists(s) then begin
+    MessageDlg('Нет файла '+s, mtInformation,[mbOk], 0);
+    exit;
+  end;
+  AssignFile(F,S);  {Связывание файла с именем}
+  Reset(F);
+  ReadLn(F, S);
+  col_tch_targ[Np]:=strtoint(copy(S,1,Pos(' ',s)-1));//Количество точек мишени
+  for a:=1 to col_tch_targ[Np] do begin
+    ReadLn(F, S);         //Координаты точек, описывающих контур мишени
+    Mich[Np][a].x:=strtoint(copy(S,1,Pos(' ',s)-1));
+    delete(S,1,Pos(' ',s));
+    Mich[Np][a].y:=strtoint(copy(S,1,Pos(' ',s)-1));
+  end;
+  ReadLn(F, S);           //Координаты точек описывающего прямоугольника
+  Rects[Np].Right:=strtoint(copy(S,1,Pos(' ',s)-1));
+  delete(S,1,Pos(' ',s));
+  Rects[Np].Bottom:=strtoint(copy(S,1,Pos(' ',s)-1));
+  CloseFile(F);
+end;
+
+(********** Запись задачи **********)
+procedure Save_Task;
+var  F: TextFile;
+     S: String;
+     a,b,n: integer;
+     FName: string;
+begin
+  if Task.m_index>6000 then exit;
+  FName:='res\Task_Konk\Task'+inttostr(Task.m_index)+'A.txt';
+  if Task.m_index<2000 then begin
+    if Task.Mestn=GORA then begin
+      if Task.Temp=DAY then FName:='res\Task_Konk\Task'+inttostr(Task.m_index)+'Ag.txt'
+                  else FName:='res\Task_Konk\Task'+inttostr(Task.m_index)+'Agn.txt';
+    end
+    else begin
+      if Task.Temp=DAY then FName:='res\Task_Konk\Task'+inttostr(Task.m_index)+'A.txt'
+                  else FName:='res\Task_Konk\Task'+inttostr(Task.m_index)+'An.txt';
+    end;
+  end
+  else begin
+    if (Task.m_index>5000) and (Task.m_index<6000) then
+        FName:='res\Task_Konk\Task'+inttostr(Task.m_index)+'A.txt';
+  end;
+  S:=dirBase+FName;//
+  FileSetAttr(S,$00000);
+  AssignFile(F,S);  {Связывание файла с именем}
+  Rewrite(F);
+  S:='//// Наименование задачи';
+  writeLn(F,S);
+  S:=TaskName;   //   Наименование задачи
+  writeLn(F,S);
+  if Task.m_index<5000 then begin
+    S:=IntToStr(Task.Tstr)+'                                  // Время на стрельбу';  // Время на стрельбу
+    writeLn(F,S);
+    S:=IntToStr(Task.Col_targ)+'                                    //Количество мишеней';
+    writeLn(F,S);
+    for n:=1 to 3 do begin
+      for a:=1 to Task.Col_targ do begin
+        S:='/// Описание мишени '+IntToStr(a);
+        writeLn(F,S);
+        S:=Name_Target(Task.Target[n][a].Num)+'                     // Номер мишени';
+        writeLn(F,S);
+        S:=IntToStr(Task.Target[n][a].Color_Mask)+'                 // Раскраска мишени';
+        writeLn(F,S);
+        if Task.Target[n][a].ColPoints=0 then Task.Target[n][a].Mov:=false
+                                         else Task.Target[n][a].Mov:=true;
+        if Task.Target[n][a].Mov then S:=IntToStr(1) else S:=IntToStr(0);
+        S:=S+'                      // Тип- не движется/движется';
+        writeLn(F,S);
+        if Task.Target[n][a].Air then S:=IntToStr(1) else S:=IntToStr(0);
+        S:=S+'                      // Тип- наземная/воздушная';
+        writeLn(F,S);
+        S:=IntToStr(Task.Target[n][a].Tst)+'                      // Время появления';
+        writeLn(F,S);
+        S:=IntToStr(Task.Target[n][a].Tend)+'                     // Время опускания/время нахождения в точке N 0';
+        writeLn(F,S);
+        S:=IntToStr(Task.Target[n][a].ColPoints)+'                      // Количество опорных точек';
+        writeLn(F,S);
+        S:='// Опорная точка 0';
+        writeLn(F,S);
+        S:=IntToStr(Task.Target[n][a].Xtek[0])+'                    // Координаты точки появления';
+        writeLn(F,S);
+        S:=IntToStr(Task.Target[n][a].Ytek[0])+' ';
+        writeLn(F,S);
+        S:=IntToStr(Task.Target[n][a].Htek[0])+' ';
+        writeLn(F,S);
+        S:=IntToStr(Task.Target[n][a].Tstop[0])+'                      // Время остановки в точке';
+        writeLn(F,S);
+        for b:=1 to Task.Target[n][a].ColPoints do begin
+          S:='// Опорная точка '+IntToStr(b);
+          writeLn(F,S);
+          S:=IntToStr(Task.Target[n][a].Xtek[b])+'                   // Координаты опорных точек';
+          writeLn(F,S);
+          S:=IntToStr(Task.Target[n][a].Ytek[b])+' ';
+          writeLn(F,S);
+          S:=IntToStr(Task.Target[n][a].Htek[b])+' ';
+          writeLn(F,S);
+          S:=IntToStr(Task.Target[n][a].Skor[b])+'                     // Cкорость движения до опорной точки';
+          writeLn(F,S);
+          S:=IntToStr(Task.Target[n][a].Tstop[b])+'                      // Время остановки в точке';
+          writeLn(F,S);
+          if Task.Target[n][a].Visible[b] then S:=IntToStr(1) else S:=IntToStr(0);
+          S:=S+'                      // Видимость  мишени';
+          writeLn(F,S);
+        end;
+      end;
+    end;
+  end
+  else begin
+    if Task.m_index<6000 then begin
+      S:=IntToStr(TaskRec_TAK.Tstr)+'                                  // Время на стрельбу';  // Время на стрельбу
+      writeLn(F,S);
+      S:=IntToStr(TaskRec_TAK.Col_targ)+'                                    //Количество мишеней';
+      writeLn(F,S);
+      for a:=1 to TaskRec_TAK.Col_targ do begin
+        S:='/// Описание мишени '+IntToStr(a);
+        writeLn(F,S);
+        S:=Name_Target(TaskRec_TAK.TarRec[a].Num)+'                     // Номер мишени';
+        writeLn(F,S);
+        S:=IntToStr(TaskRec_TAK.TarRec[a].Color_Mask)+'                 // Раскраска мишени';
+        writeLn(F,S);
+        if TaskRec_TAK.TarRec[a].ColPoints=0 then TaskRec_TAK.TarRec[a].Mov:=false
+                                         else TaskRec_TAK.TarRec[a].Mov:=true;
+        if TaskRec_TAK.TarRec[a].Mov then S:=IntToStr(1) else S:=IntToStr(0);
+        S:=S+'                      // Тип- не движется/движется';
+        writeLn(F,S);
+//        if TaskRec_TAK.TarRec[a].Air then S:=IntToStr(1) else S:=IntToStr(0);
+        S:=IntToStr(1);
+        S:=S+'                      // Тип- наземная/воздушная';
+        writeLn(F,S);
+        S:=IntToStr(TaskRec_TAK.TarRec[a].Tst)+'                      // Время появления';
+        writeLn(F,S);
+        S:=IntToStr(TaskRec_TAK.TarRec[a].Tend)+'                     // Время опускания/время нахождения в точке N 0';
+        writeLn(F,S);
+        S:=IntToStr(TaskRec_TAK.TarRec[a].ColPoints)+'                      // Количество опорных точек';
+        writeLn(F,S);
+        S:='// Опорная точка 0';
+        writeLn(F,S);
+        S:=IntToStr(TaskRec_TAK.TarRec[a].Xtek[0])+'                    // Координаты точки появления';
+        writeLn(F,S);
+        S:=IntToStr(TaskRec_TAK.TarRec[a].Ytek[0])+' ';
+        writeLn(F,S);
+        S:=IntToStr(TaskRec_TAK.TarRec[a].Htek[0])+' ';
+        writeLn(F,S);
+        S:=IntToStr(TaskRec_TAK.TarRec[a].Tstop[0])+'                      // Время остановки в точке';
+        writeLn(F,S);
+        for b:=1 to TaskRec_TAK.TarRec[a].ColPoints do begin
+          S:='// Опорная точка '+IntToStr(b);
+          writeLn(F,S);
+          S:=IntToStr(TaskRec_TAK.TarRec[a].Xtek[b])+'                   // Координаты опорных точек';
+          writeLn(F,S);
+          S:=IntToStr(TaskRec_TAK.TarRec[a].Ytek[b])+' ';
+          writeLn(F,S);
+          S:=IntToStr(TaskRec_TAK.TarRec[a].Htek[b])+' ';
+          writeLn(F,S);
+          S:=IntToStr(TaskRec_TAK.TarRec[a].Skor[b])+'                     // Cкорость движения до опорной точки';
+          writeLn(F,S);
+          S:=IntToStr(TaskRec_TAK.TarRec[a].Tstop[b])+'                      // Время остановки в точке';
+          writeLn(F,S);
+          if TaskRec_TAK.TarRec[a].Visible[b] then S:=IntToStr(1) else S:=IntToStr(0);
+          S:=S+'                      // Видимость  мишени';
+          writeLn(F,S);
+        end;
+      end;
+    end;
+  end;
+  S:='// Ориентиры';
+  writeLn(F,S);
+  S:=inttostr(Task.Orient.Col_orient)+' ';// Количество ориентиров
+  writeLn(F,S);
+  for a:=1 to Task.Orient.Col_orient do begin
+    S:=inttostr(Task.Orient.Typ_orient[a])+'     /// Тип ориентира';
+    writeLn(F,S);
+    S:=inttostr(round(Task.Orient.Xorient[a]))+'     ///  Координаты';
+    writeLn(F,S);
+    S:=inttostr(round(Task.Orient.Yorient[a]))+'     ///  Координаты';
+    writeLn(F,S);
+    S:=inttostr(round(Task.Orient.Horient[a]))+'     ///  Координаты';
+    writeLn(F,S);
+  end;
+  S:='/// Боекомплект';
+  writeLn(F,S);
+  S:=IntToStr(Task.Bk.Col_Upr)+'                      // Количество управляемых';
+  writeLn(F,S);
+  /// Танки, БМП, Вертолёты
+  if (Task.m_index>5000) and (Task.m_index<6000) then begin
+    S:=IntToStr(Col_Model)+'                                    // Объектов';
+    writeLn(F,S);
+    for a:=1 to Col_Model do begin
+      S:='/// Описание объекта '+IntToStr(a);
+      writeLn(F,S);
+//      S:=Name_Target(Target_Model_Isx[a].Num)+'                     // Номер объекта';
+      S:=IntToStr(Target_Model_Isx[a].Num)+'                     // Номер объекта';
+        writeLn(F,S);
+        S:=IntToStr(Target_Model_Isx[a].Color_Mask)+'               // Раскраска объекта';
+        writeLn(F,S);
+        if Target_Model_Isx[a].ColPoints=0 then Target_Model_Isx[a].Mov:=false
+                                       else Target_Model_Isx[a].Mov:=true;
+        if Target_Model_Isx[a].Mov then S:=IntToStr(1) else S:=IntToStr(0);
+        S:=S+'                      // Тип- не движется/движется';
+        writeLn(F,S);
+//        if TaskRec_TAK.TarRec[a].Air then S:=IntToStr(1) else S:=IntToStr(0);
+        S:=IntToStr(1);
+        S:=S+'                      // Тип- наземная/воздушная';
+        writeLn(F,S);
+        S:=IntToStr(Target_Model_Isx[a].Tst)+'                      // Время появления';
+        writeLn(F,S);
+        S:=IntToStr(Target_Model_Isx[a].Tend)+'                     // Время опускания/время нахождения в точке N 0';
+        writeLn(F,S);
+        S:=IntToStr(Target_Model_Isx[a].ColPoints)+'                      // Количество опорных точек';
+        writeLn(F,S);
+        S:='// Опорная точка 0';
+        writeLn(F,S);
+        S:=IntToStr(Target_Model_Isx[a].Xtek[0])+'                    // Координаты точки появления';
+        writeLn(F,S);
+        S:=IntToStr(Target_Model_Isx[a].Ytek[0])+' ';
+        writeLn(F,S);
+        S:=IntToStr(Target_Model_Isx[a].Htek[0])+' ';
+        writeLn(F,S);
+        S:=IntToStr(Target_Model_Isx[a].Tstop[0])+'                      // Время остановки в точке';
+        writeLn(F,S);
+        for b:=1 to Target_Model_Isx[a].ColPoints do begin
+          S:='// Опорная точка '+IntToStr(b);
+          writeLn(F,S);
+          S:=IntToStr(Target_Model_Isx[a].Xtek[b])+'                   // Координаты опорных точек';
+          writeLn(F,S);
+          S:=IntToStr(Target_Model_Isx[a].Ytek[b])+' ';
+          writeLn(F,S);
+          S:=IntToStr(Target_Model_Isx[a].Htek[b])+' ';
+          writeLn(F,S);
+          S:=IntToStr(Target_Model_Isx[a].Skor[b])+'                     // Cкорость движения до опорной точки';
+          writeLn(F,S);
+          S:=IntToStr(Target_Model_Isx[a].Tstop[b])+'                      // Время остановки в точке';
+          writeLn(F,S);
+          if Target_Model_Isx[a].Visible[b] then S:=IntToStr(1) else S:=IntToStr(0);
+          S:=S+'                      // Видимость  мишени';
+          writeLn(F,S);
+        end;
+      end;
+    end;
+  CloseFile(F);
+end;
+
+(**********Чтение задачи**********)
+procedure Load_Task(stan: boolean);
+var  F: TextFile;
+     FName: string;
+     S: String;
+     a,b,n: integer;
+begin
+  if stan then S:='' else S:='A';
+  FName:='res\Task_Konk\Task'+inttostr(Task.m_index)+S+'.txt';
+  S:=dirBase+FName;//
+  if not FileExists(s) then begin
+    MessageDlg('Нет файла '+s, mtInformation,[mbOk], 0);
+    exit;
+  end;
+  AssignFile(F,S);  {Связывание файла с именем}
+  Reset(F);
+  ReadLn(F, S);   //   //Наименование задачи
+  ReadLn(F, S);
+  TaskName:=S;   //   Наименование задачи
+  if (Task.m_index<5000) or (Task.m_index>6000) then begin
+    ReadLn(F, S);
+    Task.Tstr:=strtoint(copy(S,1,Pos(' ',s)-1));  // Время на стрельбу
+    ReadLn(F, S);
+    Task.Col_targ:=strtoint(copy(S,1,Pos(' ',s)-1));   // Количество мишеней
+    for n:=1 to 3 do begin
+      for a:=1 to Task.Col_targ do begin
+        ReadLn(F, S);   //   /// Описание мишени 1
+        ReadLn(F, S);
+        TargetName[a]:=copy(S,1,Pos(' ',S)-1);// номер типа мишени
+        Task.Target[n][a].Num:=Num_Target(TargetName[a]);
+        ReadLn(F, S);
+        Task.Target[n][a].Color_Mask:=strtoint(copy(S,1,Pos(' ',s)-1));// Цвет мишени
+        ReadLn(F, S);                      // Тип- не движется/движется
+        if strtoint(copy(S,1,Pos(' ',s)-1))=0 then Task.Target[n][a].Mov:=false
+                                              else Task.Target[n][a].Mov:=true;
+        ReadLn(F, S);                      // Тип- наземная/воздушная
+        if strtoint(copy(S,1,Pos(' ',s)-1))=0 then Task.Target[n][a].Air:=false
+                                              else Task.Target[n][a].Air:=true;
+        ReadLn(F, S);                      // Время появления
+        Task.Target[n][a].Tst:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Время удаления
+        Task.Target[n][a].Tend:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Количество опорных точек
+        Task.Target[n][a].ColPoints:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      //   // Опорная точка 0
+        ReadLn(F, S);                      // X
+        Task.Target[n][a].Xtek[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Y
+        Task.Target[n][a].Ytek[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // H
+        Task.Target[n][a].Htek[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Время остановки в точке
+        Task.Target[n][a].Tstop[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        Task.Target[n][a].Visible[0]:=true; // Видимость на участке всегда
+        for b:=1 to Task.Target[n][a].ColPoints do begin
+          ReadLn(F, S);                      //    // Опорная точка
+          ReadLn(F, S);                      // Y
+          Task.Target[n][a].Xtek[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+          ReadLn(F, S);                      // Y
+          Task.Target[n][a].Ytek[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+          ReadLn(F, S);                      // H
+          Task.Target[n][a].Htek[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+          ReadLn(F, S);                      // Cкорость движения на участках
+          Task.Target[n][a].Skor[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+          ReadLn(F, S);                      // Время остановки в точке
+          Task.Target[n][a].Tstop[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+          ReadLn(F, S);                      // Видимость на участке
+          if strtoint(copy(S,1,Pos(' ',s)-1))=1 then Task.Target[n][a].Visible[b]:=true
+                                                else Task.Target[n][a].Visible[b]:=false;
+        end;
+      end;
+    end;
+  end
+  else begin
+    if Task.m_index<6000 then begin
+      ReadLn(F, S);
+      TaskRec_TAK.Tstr:=strtoint(copy(S,1,Pos(' ',s)-1));  // Время на стрельбу
+      Task.Tstr:=TaskRec_TAK.Tstr;
+      ReadLn(F, S);
+      TaskRec_TAK.Col_targ:=strtoint(copy(S,1,Pos(' ',s)-1));   // Количество мишеней
+      for a:=1 to TaskRec_TAK.Col_targ do begin
+        ReadLn(F, S);   //   /// Описание мишени 1
+        ReadLn(F, S);
+        TargetName[a]:=copy(S,1,Pos(' ',S)-1);// номер типа мишени
+        TaskRec_TAK.TarRec[a].Num:=Num_Target(TargetName[a]);
+        ReadLn(F, S);
+        TaskRec_TAK.TarRec[a].Color_Mask:=strtoint(copy(S,1,Pos(' ',s)-1));// Цвет мишени
+        ReadLn(F, S);                      // Тип- не движется/движется
+        if strtoint(copy(S,1,Pos(' ',s)-1))=0 then TaskRec_TAK.TarRec[a].Mov:=false
+                                              else TaskRec_TAK.TarRec[a].Mov:=true;
+        ReadLn(F, S);                      // Тип- наземная/воздушная
+        ReadLn(F, S);                      // Время появления
+        TaskRec_TAK.TarRec[a].Tst:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Время удаления
+        TaskRec_TAK.TarRec[a].Tend:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Количество опорных точек
+        TaskRec_TAK.TarRec[a].ColPoints:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      //   // Опорная точка 0
+        ReadLn(F, S);                      // X
+        TaskRec_TAK.TarRec[a].Xtek[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Y
+        TaskRec_TAK.TarRec[a].Ytek[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // H
+        TaskRec_TAK.TarRec[a].Htek[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Время остановки в точке
+        TaskRec_TAK.TarRec[a].Tstop[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        TaskRec_TAK.TarRec[a].Visible[0]:=true; // Видимость на участке всегда
+        for b:=1 to TaskRec_TAK.TarRec[a].ColPoints do begin
+          ReadLn(F, S);                      //    // Опорная точка
+          ReadLn(F, S);                      // Y
+          TaskRec_TAK.TarRec[a].Xtek[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+          ReadLn(F, S);                      // Y
+          TaskRec_TAK.TarRec[a].Ytek[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+          ReadLn(F, S);                      // H
+          TaskRec_TAK.TarRec[a].Htek[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+          ReadLn(F, S);                      // Cкорость движения на участках
+          TaskRec_TAK.TarRec[a].Skor[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+          ReadLn(F, S);                      // Время остановки в точке
+          TaskRec_TAK.TarRec[a].Tstop[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+          ReadLn(F, S);                      // Видимость на участке
+          if strtoint(copy(S,1,Pos(' ',s)-1))=1 then TaskRec_TAK.TarRec[a].Visible[b]:=true
+                                                else TaskRec_TAK.TarRec[a].Visible[b]:=false;
+        end;
+      end;
+    end;
+  end;
+  ReadLn(F, S);                          // Ориентирsы
+  ReadLn(F, S);                          // Количество ориентиров
+  Task.Orient.Col_orient:=strtoint(copy(S,1,Pos(' ',s)-1));
+  for a:=1 to Task.Orient.Col_orient do begin
+    ReadLn(F, S);                          /// Тип ориентира
+    Task.Orient.Typ_orient[a]:=strtoint(copy(S,1,Pos(' ',s)-1));
+    ReadLn(F, S);                          // Координаты
+    Task.Orient.Xorient[a]:=strtoint(copy(S,1,Pos(' ',s)-1));
+    ReadLn(F, S);
+    Task.Orient.Yorient[a]:=strtoint(copy(S,1,Pos(' ',s)-1));
+    ReadLn(F, S);
+    Task.Orient.Horient[a]:=strtoint(copy(S,1,Pos(' ',s)-1));
+  end;
+  ReadLn(F, S);                          //  /// Боекомплект по задаче
+  ReadLn(F, S);                          // Количество боеприпасов к пушке У
+  Task.Bk.Col_Upr:=strtoint(copy(S,1,Pos(' ',s)-1));
+  /// Танки, БМП, Вертолёты
+  if (Task.m_index>5000) and (Task.m_index<6000) then begin
+    ReadLn(F, S);
+    Col_Model:=strtoint(copy(S,1,Pos(' ',s)-1));   // Количество мишеней
+    for a:=1 to Col_Model do begin
+      ReadLn(F, S);   //   /// Описание мишени 1
+      ReadLn(F, S);
+      TargetName[a]:=copy(S,1,Pos(' ',S)-1);// номер типа мишени
+//      Target_Model_Isx[a].Num:=Num_Target(TargetName[a]);
+      Target_Model_Isx[a].Num:=StrToInt(TargetName[a]);
+      ReadLn(F, S);
+      Target_Model_Isx[a].Color_Mask:=strtoint(copy(S,1,Pos(' ',s)-1));// Цвет мишени
+      ReadLn(F, S);                      // Тип- не движется/движется
+      if strtoint(copy(S,1,Pos(' ',s)-1))=0 then Target_Model_Isx[a].Mov:=false
+                                            else Target_Model_Isx[a].Mov:=true;
+      ReadLn(F, S);                      // Тип- наземная/воздушная
+      ReadLn(F, S);                      // Время появления
+      Target_Model_Isx[a].Tst:=strtoint(copy(S,1,Pos(' ',s)-1));
+      ReadLn(F, S);                      // Время удаления
+      Target_Model_Isx[a].Tend:=strtoint(copy(S,1,Pos(' ',s)-1));
+      ReadLn(F, S);                      // Количество опорных точек
+      Target_Model_Isx[a].ColPoints:=strtoint(copy(S,1,Pos(' ',s)-1));
+      ReadLn(F, S);                      //   // Опорная точка 0
+      ReadLn(F, S);                      // X
+      Target_Model_Isx[a].Xtek[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+      ReadLn(F, S);                      // Y
+      Target_Model_Isx[a].Ytek[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+      ReadLn(F, S);                      // H
+      Target_Model_Isx[a].Htek[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+      ReadLn(F, S);                      // Время остановки в точке
+      Target_Model_Isx[a].Tstop[0]:=strtoint(copy(S,1,Pos(' ',s)-1));
+      Target_Model_Isx[a].Visible[0]:=true; // Видимость на участке всегда
+      for b:=1 to Target_Model_Isx[a].ColPoints do begin
+        ReadLn(F, S);                      //    // Опорная точка
+        ReadLn(F, S);                      // Y
+        Target_Model_Isx[a].Xtek[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Y
+        Target_Model_Isx[a].Ytek[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // H
+        Target_Model_Isx[a].Htek[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Cкорость движения на участках
+        Target_Model_Isx[a].Skor[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Время остановки в точке
+        Target_Model_Isx[a].Tstop[b]:=strtoint(copy(S,1,Pos(' ',s)-1));
+        ReadLn(F, S);                      // Видимость на участке
+        if strtoint(copy(S,1,Pos(' ',s)-1))=1 then Target_Model_Isx[a].Visible[b]:=true
+                                              else Target_Model_Isx[a].Visible[b]:=false;
+      end;
+    end;
+  end;
+  CloseFile(F);
+  for a:=1 to 3 do begin
+    Boek[a].Col_Upr:=Task.Bk.Col_Upr;
+    BMP[a].Col_Upr:=Boek[a].Col_Upr;
+    Form1.OtobrPanel(a);
+  end;
+  Form1.Ris_task;
+end;
+
+
+end.

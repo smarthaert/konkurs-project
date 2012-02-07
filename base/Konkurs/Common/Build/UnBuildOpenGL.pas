@@ -1,0 +1,54 @@
+// Модуль создаёт и разрушает контекст экрана для работы с OpenGL
+unit UnBuildOpenGL;
+
+interface
+
+uses
+  Windows, dglOpenGL, Main;
+
+  procedure Creat_OpenGL;
+  procedure Reset_OpenGL;
+  procedure SetDCPixelFormat;
+
+implementation
+
+var
+enableOpenGL: boolean; //для контроля, имел ли место вызов процедуры Creat_OpenGL;
+
+(************Подключение OPEN_GL*********)
+procedure Creat_OpenGL;
+begin
+  DC := GetDC(Form1.Handle);   // Получить дескриптор экрана
+  SetDCPixelFormat;            // Установить формат пиксела
+  HRC := CreateRenderingContext(DC, [opDoubleBuffered], 32, 16, 0, 0, 0, 0);
+  wglMakeCurrent(DC, hrc);     // Сделать контекст текущим
+  enableOpenGL:=true;
+end;
+
+{**************Формат пикселей******************}
+procedure SetDCPixelFormat;
+var
+  nPixelFormat: Integer;
+  pfd: TPixelFormatDescriptor;
+begin
+  FillChar(pfd, SizeOf(pfd), 0);
+  pfd.dwFlags := PFD_DRAW_TO_WINDOW or PFD_SUPPORT_OPENGL or PFD_DOUBLEBUFFER;
+  nPixelFormat := ChoosePixelFormat(DC, @pfd);
+  SetPixelFormat(DC, nPixelFormat, @pfd);
+end;
+
+{**************Удаление OPEN_GL******************}
+procedure Reset_OpenGL;
+begin
+  if enableOpenGL then begin
+    wglMakeCurrent(0, 0);
+    DestroyRenderingContext(hRC);
+    ReleaseDC(Form1.Handle, DC);
+    DeleteDC (DC);
+  end;
+end;
+
+end.
+
+
+

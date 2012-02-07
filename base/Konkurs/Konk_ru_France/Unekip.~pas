@@ -1,0 +1,70 @@
+unit UnEkip;
+
+interface
+
+uses Windows, SysUtils, Classes, Graphics, Forms, Controls, StdCtrls, 
+  Buttons, ExtCtrls, ToolWin, ComCtrls;
+
+type
+  TOKBottomDlg3 = class(TForm)
+    OKBtn: TButton;
+    CancelBtn: TButton;
+    ToolBar1: TToolBar;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    Edit1: TEdit;
+    Edit2: TEdit;
+    Edit3: TEdit;
+    Bevel1: TBevel;
+    Bevel2: TBevel;
+    Label4: TLabel;
+    Label5: TLabel;
+    ComboBox2: TComboBox;
+    Edit5: TEdit;
+    Label8: TLabel;
+    Label9: TLabel;
+    ComboBox4: TComboBox;
+    Edit7: TEdit;
+    Edit8: TEdit;
+    ComboBox5: TComboBox;
+    Label10: TLabel;
+    Label11: TLabel;
+    ComboBox6: TComboBox;
+    Edit9: TEdit;
+    Bevel3: TBevel;
+    Label12: TLabel;
+    Label13: TLabel;
+    ComboBox7: TComboBox;
+    Edit10: TEdit;
+    Edit11: TEdit;
+    ComboBox8: TComboBox;
+    Label14: TLabel;
+    Label15: TLabel;
+    ComboBox9: TComboBox;
+    Edit12: TEdit;
+    Bevel4: TBevel;
+    procedure FormKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  OKBottomDlg3: TOKBottomDlg3;
+
+implementation
+
+uses Main;
+
+{$R *.DFM}
+
+procedure TOKBottomDlg3.FormKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if key=VK_ESCAPE then close;
+end;
+
+end.
